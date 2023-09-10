@@ -563,6 +563,37 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "users"
+        ],
+        "properties": {
+          "users": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "offset": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ],
     "definitions": {
@@ -747,6 +778,153 @@
               "additionalProperties": false
             }
           ]
+        }
+      }
+    },
+    "users": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_User",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/User"
+      },
+      "definitions": {
+        "SocialMedia": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "twitter"
+              ],
+              "properties": {
+                "twitter": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "instagram"
+              ],
+              "properties": {
+                "instagram": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "telegram"
+              ],
+              "properties": {
+                "telegram": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": [
+                "discord"
+              ],
+              "properties": {
+                "discord": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "User": {
+          "type": "object",
+          "properties": {
+            "country": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "elo": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "email": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "experience": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "first_name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "image_url": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "last_name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "phone": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "socials": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/definitions/SocialMedia"
+              }
+            },
+            "username": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "website": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
         }
       }
     }

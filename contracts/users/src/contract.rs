@@ -10,6 +10,8 @@ use crate::state::{ADDRESS_TO_USER, CONFIG, GAME_CONTRACTS, NUM_USERS};
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+const DEFAULT_MAX_LIMIT: u32 = 250;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -225,12 +227,27 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GameRegistered { game_address } => {
             to_binary(&query_game_registered(deps, game_address)?)
         }
+        QueryMsg::Users { offset, limit } => to_binary(&query_users(deps, offset, limit)?),
     }
 }
 
 fn query_user(deps: Deps, address: Addr) -> StdResult<User> {
     let user = ADDRESS_TO_USER.load(deps.storage, address)?;
     Ok(user)
+}
+
+fn query_users(deps: Deps, offset: Option<u64>, limit: Option<u32>) -> StdResult<Vec<User>> {
+    let limit = limit.unwrap_or(DEFAULT_MAX_LIMIT).min(DEFAULT_MAX_LIMIT);
+    let offset = offset.unwrap_or(0);
+    let users: Vec<User> = ADDRESS_TO_USER
+        .range(deps.storage, None, None, Order::Ascending)
+        .skip(offset as usize)
+        .take(limit as usize)
+        .filter_map(|v| v.ok())
+        .map(|(_, v)| v)
+        .collect();
+
+    Ok(users)
 }
 
 fn query_total_users(deps: Deps) -> StdResult<u128> {

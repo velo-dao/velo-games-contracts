@@ -7,6 +7,7 @@ Repository that will contain all games
 | Name                                   | Description             |
 | -------------------------------------- | ----------------------- |
 | [`prediction_game`](contracts/prediction_game)   | Prediction contract |
+| [`users`](contracts/users)   | Users contract |
 
 ### You can compile each contract:
 

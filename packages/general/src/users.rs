@@ -85,4 +85,9 @@ pub enum QueryMsg {
     Config {},
     #[returns(bool)]
     GameRegistered { game_address: Addr },
+    #[returns(Vec<User>)]
+    Users {
+        offset: Option<u64>,
+        limit: Option<u32>,
+    },
 }
