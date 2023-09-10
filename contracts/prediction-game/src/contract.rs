@@ -21,9 +21,10 @@ use prediction::prediction_game::{Config, Direction};
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coins, to_binary, Addr, BankMsg, Binary, Decimal, Deps, DepsMut, Env, Event, MessageInfo,
-    Order, Response, StdError, StdResult, Uint128,
+    Order, Response, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw_storage_plus::Bound;
+use general::users::ExecuteMsg::AddExperienceAndElo;
 use prediction::prediction_game::{FinishedRound, LiveRound, NextRound, FEE_PRECISION};
 use prediction::prediction_game::{MyCurrentPositionResponse, StatusResponse};
 use pyth_sdk_cw::{query_price_feed, Price, PriceFeedResponse, PriceIdentifier};
@@ -237,8 +238,22 @@ fn execute_collect_winnings(deps: DepsMut, info: MessageInfo) -> Result<Response
             };
             messages_dev_fees.push(token_transfer_msg)
         }
+
+        let experience_message = AddExperienceAndElo {
+            user: info.sender.clone(),
+            experience: amount_commissionable.u128() as u64 * config.exp_per_denom_won,
+            elo: None,
+        };
+
+        let wasm_message = WasmMsg::Execute {
+            contract_addr: config.users_contract.to_string(),
+            msg: to_binary(&experience_message)?,
+            funds: vec![],
+        };
+
         resp = resp
             .add_messages(messages_dev_fees)
+            .add_message(wasm_message)
             .add_attribute("action", "distribute-dev-rewards")
             .add_attribute("amount", dev_fee);
     }
@@ -360,8 +375,22 @@ fn execute_collect_winning_round(
             };
             messages_dev_fees.push(token_transfer_msg)
         }
+
+        let experience_message = AddExperienceAndElo {
+            user: info.sender.clone(),
+            experience: amount_commissionable.u128() as u64 * config.exp_per_denom_won,
+            elo: None,
+        };
+
+        let wasm_message = WasmMsg::Execute {
+            contract_addr: config.users_contract.to_string(),
+            msg: to_binary(&experience_message)?,
+            funds: vec![],
+        };
+
         resp = resp
             .add_messages(messages_dev_fees)
+            .add_message(wasm_message)
             .add_attribute("action", "distribute-dev-rewards")
             .add_attribute("amount", dev_fee);
     }
@@ -435,6 +464,18 @@ fn execute_bet(
         ))));
     }
 
+    let experience_message = AddExperienceAndElo {
+        user: info.sender.clone(),
+        experience: funds_sent.amount.u128() as u64 * config.exp_per_denom_bet,
+        elo: None,
+    };
+
+    let wasm_message = WasmMsg::Execute {
+        contract_addr: config.users_contract.to_string(),
+        msg: to_binary(&experience_message)?,
+        funds: vec![],
+    };
+
     match dir {
         Direction::Bull => {
             bet_info_storage().save(
@@ -471,6 +512,7 @@ fn execute_bet(
             bet_round.bear_amount += gross;
             NEXT_ROUND.save(deps.storage, &bet_round)?;
             resp = resp
+                .add_message(wasm_message)
                 .add_attribute("action", "bet".to_string())
                 .add_attribute("round", round_id.to_string())
                 .add_attribute("direction", "bear".to_string())

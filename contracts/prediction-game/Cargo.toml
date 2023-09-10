@@ -38,3 +38,4 @@ cosmwasm-schema   = { workspace = true }
 prediction        = { workspace = true }
 cw0               = { workspace = true } 
 pyth-sdk-cw       = { workspace = true }
+general           = { workspace = true }

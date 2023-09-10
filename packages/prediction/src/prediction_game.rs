@@ -31,8 +31,13 @@ pub struct Config {
     pub next_round_seconds: Uint128,
     pub minimum_bet: Uint128,
     pub gaming_fee: Uint128,
-    //The tokens we are placing the bet with
+    //The token we are placing the bet with
     pub token_denom: String,
+    //Address of the users contract where this contract will add the XP.
+    pub users_contract: Addr,
+    //Rewards for Users
+    pub exp_per_denom_bet: u64,
+    pub exp_per_denom_won: u64,
     pub dev_wallet_list: Vec<WalletInfo>,
 }
 

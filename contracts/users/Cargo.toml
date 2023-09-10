@@ -1,0 +1,17 @@
+[package]
+name = "users"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cosmwasm-std    = { workspace = true }
+cw-ownable      = { workspace = true }
+thiserror       = { workspace = true }
+cw2             = { workspace = true }
+cw-storage-plus = { workspace = true }
+cosmwasm-schema = { workspace = true }
+general         = { workspace = true }
