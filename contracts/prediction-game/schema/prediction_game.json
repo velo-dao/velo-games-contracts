@@ -49,10 +49,13 @@
         "type": "object",
         "required": [
           "dev_wallet_list",
+          "exp_per_denom_bet",
+          "exp_per_denom_won",
           "gaming_fee",
           "minimum_bet",
           "next_round_seconds",
-          "token_denom"
+          "token_denom",
+          "users_contract"
         ],
         "properties": {
           "dev_wallet_list": {
@@ -60,6 +63,16 @@
             "items": {
               "$ref": "#/definitions/WalletInfo"
             }
+          },
+          "exp_per_denom_bet": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "exp_per_denom_won": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
           },
           "gaming_fee": {
             "$ref": "#/definitions/Uint128"
@@ -72,6 +85,9 @@
           },
           "token_denom": {
             "type": "string"
+          },
+          "users_contract": {
+            "$ref": "#/definitions/Addr"
           }
         },
         "additionalProperties": false
@@ -417,10 +433,13 @@
         "type": "object",
         "required": [
           "dev_wallet_list",
+          "exp_per_denom_bet",
+          "exp_per_denom_won",
           "gaming_fee",
           "minimum_bet",
           "next_round_seconds",
-          "token_denom"
+          "token_denom",
+          "users_contract"
         ],
         "properties": {
           "dev_wallet_list": {
@@ -428,6 +447,16 @@
             "items": {
               "$ref": "#/definitions/WalletInfo"
             }
+          },
+          "exp_per_denom_bet": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "exp_per_denom_won": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
           },
           "gaming_fee": {
             "$ref": "#/definitions/Uint128"
@@ -440,6 +469,9 @@
           },
           "token_denom": {
             "type": "string"
+          },
+          "users_contract": {
+            "$ref": "#/definitions/Addr"
           }
         },
         "additionalProperties": false
@@ -871,10 +903,13 @@
       "type": "object",
       "required": [
         "dev_wallet_list",
+        "exp_per_denom_bet",
+        "exp_per_denom_won",
         "gaming_fee",
         "minimum_bet",
         "next_round_seconds",
-        "token_denom"
+        "token_denom",
+        "users_contract"
       ],
       "properties": {
         "dev_wallet_list": {
@@ -882,6 +917,16 @@
           "items": {
             "$ref": "#/definitions/WalletInfo"
           }
+        },
+        "exp_per_denom_bet": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "exp_per_denom_won": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
         },
         "gaming_fee": {
           "$ref": "#/definitions/Uint128"
@@ -894,6 +939,9 @@
         },
         "token_denom": {
           "type": "string"
+        },
+        "users_contract": {
+          "$ref": "#/definitions/Addr"
         }
       },
       "additionalProperties": false,

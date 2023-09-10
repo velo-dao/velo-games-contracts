@@ -1,4 +1,4 @@
-for d in contracts/*/*; do
+for d in contracts/*; do
   if [ -d "$d" ]; then
     cd $d
     cargo schema
@@ -6,4 +6,3 @@ for d in contracts/*/*; do
     cd ../..
   fi
 done
-cd ..
