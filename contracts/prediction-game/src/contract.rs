@@ -1060,13 +1060,7 @@ fn compute_gaming_fee(deps: Deps, gross: Uint128) -> StdResult<Uint128> {
 }
 
 fn compute_round_open(deps: Deps, env: Env, round: &NextRound) -> Result<LiveRound, ContractError> {
-    let denoms = ROUND_DENOMS.load(deps.storage)?;
-    let round_number = round.id.u128() as usize;
-    let denom = denoms
-        .get(round_number.checked_rem(denoms.len()).unwrap())
-        .unwrap();
-
-    let open_price = get_current_price(deps, denom.to_string())?;
+    let open_price = get_current_price(deps, round.denom.clone())?;
     let config = CONFIG.load(deps.storage)?;
 
     Ok(LiveRound {
@@ -1080,7 +1074,7 @@ fn compute_round_open(deps: Deps, env: Env, round: &NextRound) -> Result<LiveRou
         open_price,
         bull_amount: round.bull_amount,
         bear_amount: round.bear_amount,
-        denom: denom.to_string(),
+        denom: round.denom.to_string(),
     })
 }
 
@@ -1097,13 +1091,7 @@ fn get_current_price(deps: Deps, denom: String) -> Result<Price, ContractError> 
 }
 
 fn compute_round_close(deps: Deps, round: &LiveRound) -> Result<FinishedRound, ContractError> {
-    let denoms = ROUND_DENOMS.load(deps.storage)?;
-    let round_number = round.id.u128() as usize;
-    let denom = denoms
-        .get(round_number.checked_rem(denoms.len()).unwrap())
-        .unwrap();
-
-    let close_price = get_current_price(deps, denom.to_string())?;
+    let close_price = get_current_price(deps, round.denom.clone())?;
 
     let winner = match close_price.price.cmp(&round.open_price.price) {
         std::cmp::Ordering::Greater =>
@@ -1133,7 +1121,7 @@ fn compute_round_close(deps: Deps, round: &LiveRound) -> Result<FinishedRound, C
         bull_amount: round.bull_amount,
         winner,
         close_price,
-        denom: denom.to_string(),
+        denom: round.denom.to_string(),
     })
 }
 
