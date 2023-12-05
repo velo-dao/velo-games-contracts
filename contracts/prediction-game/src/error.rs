@@ -1,7 +1,7 @@
 use cw0::PaymentError;
 use thiserror::Error;
 
-use cosmwasm_std::{StdError, OverflowError};
+use cosmwasm_std::{OverflowError, StdError, Uint128};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
@@ -19,6 +19,15 @@ pub enum ContractError {
 
     #[error("Not enough funds for the bet sent")]
     NotEnoughFunds {},
+
+    #[error("Round {} stopped accepting bids {} second(s) ago; the next round has not yet begun", round_id, seconds)]
+    RoundFinished { round_id: Uint128, seconds: u64 },
+
+    #[error("Need to bet more than minimum bet amount")]
+    BetUnderMinBetAmount {},
+
+    #[error("You cannot bet in both directions")]
+    InvalidDirectionBet {},
 
     #[error("Unauthorized")]
     Unauthorized {},

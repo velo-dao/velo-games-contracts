@@ -51,18 +51,18 @@ pub struct User {
 
 #[cw_serde]
 pub struct Config {
-    //How much exp is needed to get from lvl 0 to lvl 1
+    // How much exp is needed to get from lvl 0 to lvl 1
     pub initial_exp_per_level: u64,
-    //Increase needed per level
-    //If initial_exp_per_level is 100 and exp_increase_per_level is 10, then the exp needed to get from lvl 1 to lvl 2 is 110
+    // Increase needed per level
+    // If initial_exp_per_level is 100 and exp_increase_per_level is 10, then the exp needed to get from lvl 1 to lvl 2 is 110
     pub exp_increase_per_level: u64,
 }
 
 #[cw_serde]
 pub struct Elo {
-    //Elo to modify
+    // Elo to modify
     pub amount: u64,
-    //If true we add, if negative we substract
+    // If true we add, if negative we substract
     pub add: bool,
 }
 

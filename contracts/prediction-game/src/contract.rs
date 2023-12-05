@@ -20,7 +20,7 @@ use prediction::prediction_game::{Config, Direction};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, to_binary, Addr, BankMsg, Binary, Decimal, Deps, DepsMut, Env, Event, MessageInfo,
+    coins, to_json_binary, Addr, BankMsg, Binary, Decimal, Deps, DepsMut, Env, Event, MessageInfo,
     Order, Response, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw_storage_plus::Bound;
@@ -47,13 +47,15 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let mut total_ratio = Decimal::zero();
-    for dev_wallet in msg.config.dev_wallet_list.clone() {
-        total_ratio += dev_wallet.ratio;
-    }
+    if !msg.config.dev_wallet_list.is_empty() {
+        let mut total_ratio = Decimal::zero();
+        for dev_wallet in msg.config.dev_wallet_list.clone() {
+            total_ratio += dev_wallet.ratio;
+        }
 
-    if total_ratio != Decimal::one() {
-        return Err(ContractError::WrongRatio {});
+        if total_ratio != Decimal::one() {
+            return Err(ContractError::WrongRatio {});
+        }
     }
 
     CONFIG.save(deps.storage, &msg.config)?;
@@ -247,7 +249,7 @@ fn execute_collect_winnings(deps: DepsMut, info: MessageInfo) -> Result<Response
 
         let wasm_message = WasmMsg::Execute {
             contract_addr: config.users_contract.to_string(),
-            msg: to_binary(&experience_message)?,
+            msg: to_json_binary(&experience_message)?,
             funds: vec![],
         };
 
@@ -384,7 +386,7 @@ fn execute_collect_winning_round(
 
         let wasm_message = WasmMsg::Execute {
             contract_addr: config.users_contract.to_string(),
-            msg: to_binary(&experience_message)?,
+            msg: to_json_binary(&experience_message)?,
             funds: vec![],
         };
 
@@ -444,24 +446,27 @@ fn execute_bet(
         return Err(ContractError::NotEnoughFunds {});
     }
 
+    if funds_sent.amount < config.minimum_bet {
+        return Err(ContractError::BetUnderMinBetAmount {});
+    }
+
     if env.block.time > bet_round.open_time {
-        return Err(ContractError::Std(StdError::generic_err(format!(
-            "Round {} stopped accepting bids {} second(s) ago; the next round has not yet begun",
+        return Err(ContractError::RoundFinished {
             round_id,
-            (env.block.time.seconds() - bet_round.open_time.seconds())
-        ))));
+            seconds: env.block.time.seconds() - bet_round.open_time.seconds(),
+        });
     }
 
     let bet_info_key = bet_info_key(round_id.u128(), &info.sender.clone());
 
     let bet_info = bet_info_storage().may_load(deps.storage, bet_info_key.clone())?;
 
-    if bet_info.is_some() {
-        return Err(ContractError::Std(StdError::generic_err(format!(
-            "You have already bet for this game for {}, with amount: {}",
-            bet_info.clone().unwrap().direction.to_string(),
-            bet_info.unwrap().amount
-        ))));
+    let mut amount_bet = gross;
+    if let Some(bet_info) = bet_info {
+        if bet_info.direction != dir {
+            return Err(ContractError::InvalidDirectionBet {});
+        }
+        amount_bet += bet_info.amount;
     }
 
     let experience_message = AddExperienceAndElo {
@@ -472,7 +477,7 @@ fn execute_bet(
 
     let wasm_message = WasmMsg::Execute {
         contract_addr: config.users_contract.to_string(),
-        msg: to_binary(&experience_message)?,
+        msg: to_json_binary(&experience_message)?,
         funds: vec![],
     };
 
@@ -484,7 +489,7 @@ fn execute_bet(
                 &BetInfo {
                     player: info.sender.clone(),
                     round_id,
-                    amount: gross,
+                    amount: amount_bet,
                     direction: Direction::Bull,
                 },
             )?;
@@ -505,7 +510,7 @@ fn execute_bet(
                 &BetInfo {
                     player: info.sender.clone(),
                     round_id,
-                    amount: gross,
+                    amount: amount_bet,
                     direction: Direction::Bear,
                 },
             )?;
@@ -635,34 +640,38 @@ fn execute_update_config(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::Status {} => to_binary(&query_status(deps, env)?),
+        QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
+        QueryMsg::Status {} => to_json_binary(&query_status(deps, env)?),
         QueryMsg::MyCurrentPosition { address } => {
-            to_binary(&query_my_current_position(deps, address)?)
+            to_json_binary(&query_my_current_position(deps, address)?)
         }
-        QueryMsg::FinishedRound { round_id } => to_binary(&query_finished_round(deps, round_id)?),
+        QueryMsg::FinishedRound { round_id } => {
+            to_json_binary(&query_finished_round(deps, round_id)?)
+        }
         QueryMsg::MyGameList {
             player,
             start_after,
             limit,
-        } => to_binary(&query_my_games(deps, player, start_after, limit)?),
-        QueryMsg::MyPendingReward { player } => to_binary(&query_my_pending_reward(deps, player)?),
+        } => to_json_binary(&query_my_games(deps, player, start_after, limit)?),
+        QueryMsg::MyPendingReward { player } => {
+            to_json_binary(&query_my_pending_reward(deps, player)?)
+        }
         QueryMsg::MyPendingRewardRounds { player } => {
-            to_binary(&query_my_pending_reward_rounds(deps, player)?)
+            to_json_binary(&query_my_pending_reward_rounds(deps, player)?)
         }
         QueryMsg::GetUsersPerRound {
             round_id,
             start_after,
             limit,
-        } => to_binary(&query_users_per_round(deps, round_id, start_after, limit)?),
+        } => to_json_binary(&query_users_per_round(deps, round_id, start_after, limit)?),
         QueryMsg::MyPendingRewardRound { round_id, player } => {
-            to_binary(&query_my_pending_reward_round(deps, round_id, player)?)
+            to_json_binary(&query_my_pending_reward_round(deps, round_id, player)?)
         }
         QueryMsg::GetClaimInfoPerRound {
             round_id,
             start_after,
             limit,
-        } => to_binary(&query_claim_info_per_round(
+        } => to_json_binary(&query_claim_info_per_round(
             deps,
             round_id,
             start_after,
@@ -672,11 +681,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             player,
             start_after,
             limit,
-        } => to_binary(&query_claim_info_by_user(deps, player, start_after, limit)?),
-        QueryMsg::TotalSpent { player } => to_binary(&query_total_spent(deps, player)?),
-        QueryMsg::GetAdmins {} => to_binary(&query_get_admins(deps)?),
-        QueryMsg::GetRoundDenoms {} => to_binary(&query_get_round_denoms(deps)?),
-        QueryMsg::GetIdentifiers {} => to_binary(&query_get_identifiers(deps)?),
+        } => to_json_binary(&query_claim_info_by_user(deps, player, start_after, limit)?),
+        QueryMsg::TotalSpent { player } => to_json_binary(&query_total_spent(deps, player)?),
+        QueryMsg::GetAdmins {} => to_json_binary(&query_get_admins(deps)?),
+        QueryMsg::GetRoundDenoms {} => to_json_binary(&query_get_round_denoms(deps)?),
+        QueryMsg::GetIdentifiers {} => to_json_binary(&query_get_identifiers(deps)?),
     }
 }
 

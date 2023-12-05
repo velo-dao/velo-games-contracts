@@ -1,4 +1,6 @@
-use cosmwasm_std::{entry_point, to_binary, DepsMut, Empty, Env, MessageInfo, Order, Response};
+use cosmwasm_std::{
+    entry_point, to_json_binary, DepsMut, Empty, Env, MessageInfo, Order, Response,
+};
 use cosmwasm_std::{Addr, Binary, Deps, StdResult};
 use cw2::set_contract_version;
 use cw_ownable::{assert_owner, initialize_owner};
@@ -221,13 +223,13 @@ fn add_experience_and_elo(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::User { address } => to_binary(&query_user(deps, address)?),
-        QueryMsg::TotalUsers {} => to_binary(&query_total_users(deps)?),
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::User { address } => to_json_binary(&query_user(deps, address)?),
+        QueryMsg::TotalUsers {} => to_json_binary(&query_total_users(deps)?),
+        QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
         QueryMsg::GameRegistered { game_address } => {
-            to_binary(&query_game_registered(deps, game_address)?)
+            to_json_binary(&query_game_registered(deps, game_address)?)
         }
-        QueryMsg::Users { offset, limit } => to_binary(&query_users(deps, offset, limit)?),
+        QueryMsg::Users { offset, limit } => to_json_binary(&query_users(deps, offset, limit)?),
     }
 }
 
