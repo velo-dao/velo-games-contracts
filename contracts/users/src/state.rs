@@ -9,6 +9,7 @@ pub enum TopKey {
     NumUsers = b'N',
     Config = b'C',
     AddressToUser = b'A',
+    UsernameToUser = b'U',
     //Contracts allowed to modify users info
     GameContracts = b'G',
 }
@@ -25,5 +26,6 @@ impl TopKey {
 
 pub const NUM_USERS: Item<u128> = Item::new(TopKey::NumUsers.as_str());
 pub const ADDRESS_TO_USER: Map<Addr, User> = Map::new(TopKey::AddressToUser.as_str());
+pub const USERNAME_TO_USER: Map<String, User> = Map::new(TopKey::UsernameToUser.as_str());
 pub const GAME_CONTRACTS: Map<Addr, Empty> = Map::new(TopKey::GameContracts.as_str());
 pub const CONFIG: Item<Config> = Item::new(TopKey::Config.as_str());

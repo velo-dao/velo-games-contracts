@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Timestamp};
 use cw_ownable::cw_ownable_execute;
 
 #[cw_serde]
@@ -23,6 +23,10 @@ pub enum ExecuteMsg {
     ModifyUser {
         user: User,
     },
+    ModifyVerification {
+        username: String,
+        is_verified: bool,
+    },
     ResetElo {
         elo_substraction: Option<u64>,
     },
@@ -35,18 +39,21 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 pub struct User {
+    pub address: Option<Addr>,
     pub username: Option<String>,
+    pub display_name: Option<String>,
     pub description: Option<String>,
     pub country: Option<String>,
     pub image_url: Option<String>,
     pub first_name: Option<String>,
     pub last_name: Option<String>,
-    pub email: Option<String>,
     pub phone: Option<String>,
     pub website: Option<String>,
     pub socials: Option<Vec<SocialMedia>>,
     pub experience: Option<u64>,
     pub elo: Option<u64>,
+    pub creation_date: Option<Timestamp>,
+    pub is_verified: Option<bool>,
 }
 
 #[cw_serde]

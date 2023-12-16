@@ -1,13 +1,15 @@
+use censor::Censor;
 use cosmwasm_std::{
-    entry_point, to_json_binary, DepsMut, Empty, Env, MessageInfo, Order, Response,
+    entry_point, to_json_binary, DepsMut, Empty, Env, MessageInfo, Order, Response, Storage,
 };
 use cosmwasm_std::{Addr, Binary, Deps, StdResult};
 use cw2::set_contract_version;
 use cw_ownable::{assert_owner, initialize_owner};
 use general::users::{Config, Elo, ExecuteMsg, InstantiateMsg, QueryMsg, User};
+use url::Url;
 
 use crate::error::ContractError;
-use crate::state::{ADDRESS_TO_USER, CONFIG, GAME_CONTRACTS, NUM_USERS};
+use crate::state::{ADDRESS_TO_USER, CONFIG, GAME_CONTRACTS, NUM_USERS, USERNAME_TO_USER};
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -51,7 +53,11 @@ pub fn execute(
         ExecuteMsg::UpdateConfig { config } => update_config(deps, info, config),
         ExecuteMsg::AddGame { address } => add_game(deps, info, address),
         ExecuteMsg::RemoveGame { address } => remove_game(deps, info, address),
-        ExecuteMsg::ModifyUser { user } => modify_user(deps, info, user),
+        ExecuteMsg::ModifyUser { user } => modify_user(deps, env, info, user),
+        ExecuteMsg::ModifyVerification {
+            username,
+            is_verified,
+        } => modify_verification(deps, info, username, is_verified),
         ExecuteMsg::ResetElo { elo_substraction } => reset_elo(deps, info, elo_substraction),
         ExecuteMsg::AddExperienceAndElo {
             user,
@@ -115,27 +121,54 @@ fn remove_game(deps: DepsMut, info: MessageInfo, game: Addr) -> Result<Response,
 
 fn modify_user(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     mut user: User,
 ) -> Result<Response, ContractError> {
-    if user.experience.is_some() || user.elo.is_some() {
-        return Err(ContractError::CantModifyExpOrElo {});
-    }
+    validate_user(deps.storage, &user)?;
 
     let current_user = ADDRESS_TO_USER.may_load(deps.storage, info.sender.clone())?;
 
     if let Some(current) = current_user {
         user.elo = current.elo;
-        user.experience = current.experience
+        user.experience = current.experience;
+        user.creation_date = current.creation_date;
+        user.is_verified = current.is_verified
     } else {
+        user.creation_date = Some(env.block.time);
         NUM_USERS.update(deps.storage, |n| -> Result<_, ContractError> { Ok(n + 1) })?;
     }
 
+    user.address = Some(info.sender.clone());
     ADDRESS_TO_USER.save(deps.storage, info.sender.clone(), &user)?;
+    USERNAME_TO_USER.save(
+        deps.storage,
+        user.to_owned().username.unwrap().to_lowercase(),
+        &user,
+    )?;
 
     Ok(Response::new()
         .add_attribute("action", "modify_user")
         .add_attribute("user", info.sender))
+}
+
+fn modify_verification(
+    deps: DepsMut,
+    info: MessageInfo,
+    username: String,
+    is_verified: bool,
+) -> Result<Response, ContractError> {
+    assert_owner(deps.storage, &info.sender)?;
+
+    let mut user = USERNAME_TO_USER.load(deps.storage, username.to_owned())?;
+    user.is_verified = Some(is_verified);
+    ADDRESS_TO_USER.save(deps.storage, user.to_owned().address.unwrap(), &user)?;
+    USERNAME_TO_USER.save(deps.storage, username.to_owned(), &user)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "modify_verification")
+        .add_attribute("username", username)
+        .add_attribute("is_verified", is_verified.to_string()))
 }
 
 fn reset_elo(
@@ -194,18 +227,21 @@ fn add_experience_and_elo(
         }
     } else {
         updated_user = User {
+            address: Some(user.to_owned()),
             username: None,
+            display_name: None,
             description: None,
             country: None,
             image_url: None,
             first_name: None,
             last_name: None,
-            email: None,
             phone: None,
             website: None,
             socials: None,
             experience: Some(experience),
             elo: elo.as_ref().map(|e| if e.add { e.amount } else { 0 }),
+            creation_date: None,
+            is_verified: None,
         };
         NUM_USERS.update(deps.storage, |n| -> Result<_, ContractError> { Ok(n + 1) })?;
     }
@@ -264,4 +300,154 @@ fn query_config(deps: Deps) -> StdResult<Config> {
 
 fn query_game_registered(deps: Deps, game_address: Addr) -> StdResult<bool> {
     Ok(GAME_CONTRACTS.has(deps.storage, game_address))
+}
+
+// Helpers
+fn validate_user(storage: &mut dyn Storage, user: &User) -> Result<(), ContractError> {
+    if user.experience.is_some() || user.elo.is_some() {
+        return Err(ContractError::CantModifyExpOrElo {});
+    }
+
+    if user.creation_date.is_some() {
+        return Err(ContractError::CantModifyCreationDate {});
+    }
+
+    if user.is_verified.is_some() {
+        return Err(ContractError::CantModifyVerified {});
+    }
+
+    if user.address.is_some() {
+        return Err(ContractError::CantModifyAddress {});
+    }
+
+    let censor = Censor::Standard - "ass";
+
+    if let Some(username) = user.username.to_owned() {
+        if !(3..=16).contains(&(username.len() as u64)) {
+            return Err(ContractError::InvalidLength {
+                text: username.to_owned(),
+                min: 3,
+                max: 16,
+            });
+        }
+
+        if censor.check(username.as_str()) {
+            return Err(ContractError::ProfanityFilter {
+                text: username.to_owned(),
+            });
+        }
+
+        if USERNAME_TO_USER.has(storage, username.to_lowercase()) {
+            return Err(ContractError::UsernameAlreadyExists {});
+        }
+    } else {
+        return Err(ContractError::UsernameCannotBeEmpty {});
+    }
+
+    if let Some(display_name) = user.display_name.to_owned() {
+        if !(3..=16).contains(&(display_name.len() as u64)) {
+            return Err(ContractError::InvalidLength {
+                text: display_name.to_owned(),
+                min: 3,
+                max: 16,
+            });
+        }
+
+        if censor.check(display_name.as_str()) {
+            return Err(ContractError::ProfanityFilter {
+                text: display_name.to_owned(),
+            });
+        }
+    }
+
+    if let Some(description) = user.description.to_owned() {
+        if !(0..=255).contains(&(description.len() as u64)) {
+            return Err(ContractError::InvalidLength {
+                text: description.to_owned(),
+                min: 0,
+                max: 255,
+            });
+        }
+
+        if censor.check(description.as_str()) {
+            return Err(ContractError::ProfanityFilter {
+                text: description.to_owned(),
+            });
+        }
+    }
+
+    if let Some(image_url) = user.image_url.to_owned() {
+        Url::parse(image_url.as_str())?;
+        if !(0..=255).contains(&(image_url.len() as u64)) {
+            return Err(ContractError::InvalidLength {
+                text: image_url.to_owned(),
+                min: 0,
+                max: 255,
+            });
+        }
+    }
+
+    if let Some(website) = user.website.to_owned() {
+        Url::parse(website.as_str())?;
+        if !(0..=255).contains(&(website.len() as u64)) {
+            return Err(ContractError::InvalidLength {
+                text: website.to_owned(),
+                min: 0,
+                max: 255,
+            });
+        }
+    }
+
+    if let Some(first_name) = user.first_name.to_owned() {
+        if !(1..=20).contains(&(first_name.len() as u64)) {
+            return Err(ContractError::InvalidLength {
+                text: first_name.to_owned(),
+                min: 1,
+                max: 20,
+            });
+        }
+
+        if censor.check(first_name.as_str()) {
+            return Err(ContractError::ProfanityFilter {
+                text: first_name.to_owned(),
+            });
+        }
+    }
+
+    if let Some(last_name) = user.last_name.to_owned() {
+        if !(1..=20).contains(&(last_name.len() as u64)) {
+            return Err(ContractError::InvalidLength {
+                text: last_name.to_owned(),
+                min: 1,
+                max: 20,
+            });
+        }
+
+        if censor.check(last_name.as_str()) {
+            return Err(ContractError::ProfanityFilter {
+                text: last_name.to_owned(),
+            });
+        }
+    }
+
+    if let Some(phone) = user.phone.to_owned() {
+        if !(5..=20).contains(&(phone.len() as u64)) {
+            return Err(ContractError::InvalidLength {
+                text: phone.to_owned(),
+                min: 5,
+                max: 20,
+            });
+        }
+
+        let first_character = phone.chars().next();
+        if first_character.unwrap() != '+' && !first_character.unwrap().is_numeric() {
+            return Err(ContractError::InvalidPhoneNumber {});
+        }
+
+        if !phone.chars().skip(1).all(|c| c.is_numeric()) {
+            return Err(ContractError::InvalidPhoneNumber {});
+        }
+    }
+
+    Ok(())
 }

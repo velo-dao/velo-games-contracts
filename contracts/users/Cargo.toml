@@ -8,10 +8,13 @@ authors.workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-cosmwasm-std    = { workspace = true }
-cw-ownable      = { workspace = true }
-thiserror       = { workspace = true }
-cw2             = { workspace = true }
+cosmwasm-std = { workspace = true }
+cw-ownable = { workspace = true }
+thiserror = { workspace = true }
+cw2 = { workspace = true }
 cw-storage-plus = { workspace = true }
 cosmwasm-schema = { workspace = true }
-general         = { workspace = true }
+general = { workspace = true }
+censor = { workspace = true }
+url = { workspace = true }
+

@@ -1,14 +1,11 @@
 [workspace]
-members = [
-    "packages/*",
-    "contracts/*"
-]
+members = ["packages/*", "contracts/*"]
 resolver = "2"
 
 [workspace.package]
-version       = "0.1.0"
-edition       = "2021"  
-authors       = ["Keyne"]
+version = "0.1.0"
+edition = "2021"
+authors = ["Keyne"]
 
 [profile.release]
 rpath = false
@@ -27,16 +24,18 @@ codegen-units = 1
 incremental = false
 
 [workspace.dependencies]
-cosmwasm-std                = "1.5.0"
-thiserror                   = "1.0.50"
-cw-storage-plus             = "1.2.0"
-schemars                    = "0.8.16"
-cosmwasm-schema             = "1.5.0"
-cw2                         = "1.1.2"
-cw-utils                    = "1.0.3"
-cw0                         = "0.10.3"
-serde                       = { version = "1.0.193", default-features = false, features = ["derive"] }
-prediction                  = { path = "./packages/prediction" }
-general                     = { path = "./packages/general" }
-pyth-sdk-cw                 = "1.2.0"
-cw-ownable                  = "0.5.1" 
+cosmwasm-std = "1.5.0"
+thiserror = "1.0.50"
+cw-storage-plus = "1.2.0"
+schemars = "0.8.16"
+cosmwasm-schema = "1.5.0"
+cw2 = "1.1.2"
+cw-utils = "1.0.3"
+cw0 = "0.10.3"
+serde = { version = "1.0.193", default-features = false, features = ["derive"] }
+prediction = { path = "./packages/prediction" }
+general = { path = "./packages/general" }
+pyth-sdk-cw = "1.2.0"
+cw-ownable = "0.5.1"
+censor = "0.3.0"
+url = "2.5.0"
