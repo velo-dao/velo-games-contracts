@@ -85,7 +85,9 @@ pub enum SocialMedia {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(User)]
-    User { address: Addr },
+    UserByAddress { address: Addr },
+    #[returns(User)]
+    UserByUsername { username: String },
     #[returns(u128)]
     TotalUsers {},
     #[returns(Config)]
@@ -97,4 +99,5 @@ pub enum QueryMsg {
         offset: Option<u64>,
         limit: Option<u32>,
     },
+
 }

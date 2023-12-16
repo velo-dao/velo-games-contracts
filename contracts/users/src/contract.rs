@@ -259,7 +259,8 @@ fn add_experience_and_elo(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::User { address } => to_json_binary(&query_user(deps, address)?),
+        QueryMsg::UserByAddress { address } => to_json_binary(&query_user_by_address(deps, address)?),
+        QueryMsg::UserByUsername { username } => to_json_binary(&query_user_by_username(deps, username)?),
         QueryMsg::TotalUsers {} => to_json_binary(&query_total_users(deps)?),
         QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
         QueryMsg::GameRegistered { game_address } => {
@@ -269,8 +270,13 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn query_user(deps: Deps, address: Addr) -> StdResult<User> {
+fn query_user_by_address(deps: Deps, address: Addr) -> StdResult<User> {
     let user = ADDRESS_TO_USER.load(deps.storage, address)?;
+    Ok(user)
+}
+
+fn query_user_by_username(deps: Deps, username: String) -> StdResult<User> {
+    let user = USERNAME_TO_USER.load(deps.storage, username)?;
     Ok(user)
 }
 
