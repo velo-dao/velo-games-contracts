@@ -45,7 +45,4 @@ pub enum ContractError {
 
     #[error("Username already exists")]
     UsernameAlreadyExists {},
-
-    #[error("Phone number not valid")]
-    InvalidPhoneNumber {},
 }

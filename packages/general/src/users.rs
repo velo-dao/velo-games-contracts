@@ -47,7 +47,6 @@ pub struct User {
     pub image_url: Option<String>,
     pub first_name: Option<String>,
     pub last_name: Option<String>,
-    pub phone: Option<String>,
     pub website: Option<String>,
     pub socials: Option<Vec<SocialMedia>>,
     pub experience: Option<u64>,

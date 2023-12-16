@@ -235,7 +235,6 @@ fn add_experience_and_elo(
             image_url: None,
             first_name: None,
             last_name: None,
-            phone: None,
             website: None,
             socials: None,
             experience: Some(experience),
@@ -433,25 +432,6 @@ fn validate_user(storage: &mut dyn Storage, user: &User) -> Result<(), ContractE
             return Err(ContractError::ProfanityFilter {
                 text: last_name.to_owned(),
             });
-        }
-    }
-
-    if let Some(phone) = user.phone.to_owned() {
-        if !(5..=20).contains(&(phone.len() as u64)) {
-            return Err(ContractError::InvalidLength {
-                text: phone.to_owned(),
-                min: 5,
-                max: 20,
-            });
-        }
-
-        let first_character = phone.chars().next();
-        if first_character.unwrap() != '+' && !first_character.unwrap().is_numeric() {
-            return Err(ContractError::InvalidPhoneNumber {});
-        }
-
-        if !phone.chars().skip(1).all(|c| c.is_numeric()) {
-            return Err(ContractError::InvalidPhoneNumber {});
         }
     }
 
