@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "config"
+  ],
+  "properties": {
+    "config": {
+      "$ref": "#/definitions/Config"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Config": {
+      "type": "object",
+      "required": [
+        "exp_increase_per_level",
+        "initial_exp_per_level"
+      ],
+      "properties": {
+        "exp_increase_per_level": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "initial_exp_per_level": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

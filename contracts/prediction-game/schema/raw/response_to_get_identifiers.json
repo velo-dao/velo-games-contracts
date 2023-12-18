@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IdentifiersResponse",
+  "type": "object",
+  "required": [
+    "identifiers"
+  ],
+  "properties": {
+    "identifiers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Identifier"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Identifier": {
+      "type": "string"
+    }
+  }
+}
