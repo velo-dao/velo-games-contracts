@@ -211,7 +211,7 @@ fn add_experience_and_elo(
     }
 
     let mut updated_user;
-    let current_user = ADDRESS_TO_USER.may_load(deps.storage, info.sender.clone())?;
+    let current_user = ADDRESS_TO_USER.may_load(deps.storage, user.to_owned())?;
 
     if let Some(current) = current_user {
         updated_user = current.clone();
