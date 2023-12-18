@@ -246,7 +246,7 @@ fn add_experience_and_elo(
         NUM_USERS.update(deps.storage, |n| -> Result<_, ContractError> { Ok(n + 1) })?;
     }
 
-    ADDRESS_TO_USER.save(deps.storage, info.sender.clone(), &updated_user)?;
+    ADDRESS_TO_USER.save(deps.storage, user.to_owned(), &updated_user)?;
 
     Ok(Response::new()
         .add_attribute("action", "modify_experience_and_elo")
