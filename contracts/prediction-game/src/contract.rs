@@ -517,7 +517,6 @@ fn execute_bet(
             bet_round.bear_amount += gross;
             NEXT_ROUND.save(deps.storage, &bet_round)?;
             resp = resp
-                .add_message(wasm_message)
                 .add_attribute("action", "bet".to_string())
                 .add_attribute("round", round_id.to_string())
                 .add_attribute("direction", "bear".to_string())
@@ -527,7 +526,7 @@ fn execute_bet(
         }
     }
 
-    Ok(resp)
+    Ok(resp.add_message(wasm_message))
 }
 
 fn execute_close_round(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
