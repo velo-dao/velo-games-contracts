@@ -225,6 +225,7 @@ fn add_experience_and_elo(
             }
             updated_user.elo = Some(current_elo);
         }
+        USERNAME_TO_USER.save(deps.storage, updated_user.username.to_owned().unwrap(), &updated_user.to_owned())?;
     } else {
         updated_user = User {
             address: Some(user.to_owned()),
