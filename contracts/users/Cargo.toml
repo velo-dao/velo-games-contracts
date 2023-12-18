@@ -1,8 +1,8 @@
 [package]
 name = "users"
-version.workspace = true
-edition.workspace = true
-authors.workspace = true
+version = "0.1.1"
+edition = "2021"
+authors = ["Keyne"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

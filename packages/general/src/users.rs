@@ -98,5 +98,7 @@ pub enum QueryMsg {
         offset: Option<u64>,
         limit: Option<u32>,
     },
-
 }
+
+#[cw_serde]
+pub struct MigrateMsg {}

@@ -1,11 +1,11 @@
 use censor::Censor;
 use cosmwasm_std::{
-    entry_point, to_json_binary, DepsMut, Empty, Env, MessageInfo, Order, Response, Storage,
+    entry_point, to_json_binary, DepsMut, Empty, Env, MessageInfo, Order, Response, Storage, StdError,
 };
 use cosmwasm_std::{Addr, Binary, Deps, StdResult};
 use cw2::set_contract_version;
 use cw_ownable::{assert_owner, initialize_owner};
-use general::users::{Config, Elo, ExecuteMsg, InstantiateMsg, QueryMsg, User};
+use general::users::{Config, Elo, ExecuteMsg, InstantiateMsg, QueryMsg, User, MigrateMsg};
 use url::Url;
 
 use crate::error::ContractError;
@@ -204,7 +204,7 @@ fn add_experience_and_elo(
     experience: u64,
     elo: Option<Elo>,
 ) -> Result<Response, ContractError> {
-    if GAME_CONTRACTS.has(deps.storage, info.sender.clone()) {
+    if !GAME_CONTRACTS.has(deps.storage, info.sender.clone()) {
         return Err(ContractError::AddressNotAllowedToModifyExpOrElo {
             address: info.sender.to_string(),
         });
@@ -437,4 +437,14 @@ fn validate_user(storage: &mut dyn Storage, user: &User) -> Result<(), ContractE
     }
 
     Ok(())
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+    let version = cw2::get_contract_version(deps.storage)?;
+    if version.contract != CONTRACT_NAME {
+        return Err(StdError::generic_err("Can only upgrade from same type"));
+    }
+    cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    Ok(Response::default())
 }
