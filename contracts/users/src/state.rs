@@ -6,12 +6,13 @@ use general::users::{Config, User};
 /// Each key is only one byte long to ensure we use the smallest possible storage keys.
 #[repr(u8)]
 pub enum TopKey {
-    NumUsers = b'N',
-    Config = b'C',
-    AddressToUser = b'A',
-    UsernameToUser = b'U',
+    NumUsers = b'a',
+    Config = b'b',
+    AddressToUser = b'c',
+    UsernameToUser = b'd',
     //Contracts allowed to modify users info
-    GameContracts = b'G',
+    GameContracts = b'e',
+    Admins = b'f',
 }
 
 impl TopKey {
@@ -29,3 +30,4 @@ pub const ADDRESS_TO_USER: Map<Addr, User> = Map::new(TopKey::AddressToUser.as_s
 pub const USERNAME_TO_USER: Map<String, User> = Map::new(TopKey::UsernameToUser.as_str());
 pub const GAME_CONTRACTS: Map<Addr, Empty> = Map::new(TopKey::GameContracts.as_str());
 pub const CONFIG: Item<Config> = Item::new(TopKey::Config.as_str());
+pub const ADMINS: Item<Vec<Addr>> = Item::new(TopKey::Admins.as_str());

@@ -1,5 +1,4 @@
 use cosmwasm_std::StdError;
-use cw_ownable::OwnershipError;
 use thiserror::Error;
 use url::ParseError;
 
@@ -7,9 +6,6 @@ use url::ParseError;
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
-
-    #[error(transparent)]
-    Ownership(#[from] OwnershipError),
 
     #[error("{0}")]
     ParseError(#[from] ParseError),
@@ -45,4 +41,7 @@ pub enum ContractError {
 
     #[error("Username already exists")]
     UsernameAlreadyExists {},
+
+    #[error("At least one admin must remain")]
+    NeedOneAdmin {},
 }

@@ -1,6 +1,6 @@
 {
   "contract_name": "users",
-  "contract_version": "0.1.1",
+  "contract_version": "0.1.4",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -12,10 +12,23 @@
     "properties": {
       "config": {
         "$ref": "#/definitions/Config"
+      },
+      "extra_admins": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "items": {
+          "$ref": "#/definitions/Addr"
+        }
       }
     },
     "additionalProperties": false,
     "definitions": {
+      "Addr": {
+        "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+        "type": "string"
+      },
       "Config": {
         "type": "object",
         "required": [
@@ -77,6 +90,30 @@
             "properties": {
               "address": {
                 "$ref": "#/definitions/Addr"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "add_games"
+        ],
+        "properties": {
+          "add_games": {
+            "type": "object",
+            "required": [
+              "addresses"
+            ],
+            "properties": {
+              "addresses": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Addr"
+                }
               }
             },
             "additionalProperties": false
@@ -212,71 +249,49 @@
         "additionalProperties": false
       },
       {
-        "description": "Update the contract's ownership. The `action` to be provided can be either to propose transferring ownership to an account, accept a pending ownership transfer, or renounce the ownership permanently.",
         "type": "object",
         "required": [
-          "update_ownership"
+          "add_admin"
         ],
         "properties": {
-          "update_ownership": {
-            "$ref": "#/definitions/Action"
+          "add_admin": {
+            "type": "object",
+            "required": [
+              "new_admin"
+            ],
+            "properties": {
+              "new_admin": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "remove_admin"
+        ],
+        "properties": {
+          "remove_admin": {
+            "type": "object",
+            "required": [
+              "old_admin"
+            ],
+            "properties": {
+              "old_admin": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false
       }
     ],
     "definitions": {
-      "Action": {
-        "description": "Actions that can be taken to alter the contract's ownership",
-        "oneOf": [
-          {
-            "description": "Propose to transfer the contract's ownership to another account, optionally with an expiry time.\n\nCan only be called by the contract's current owner.\n\nAny existing pending ownership transfer is overwritten.",
-            "type": "object",
-            "required": [
-              "transfer_ownership"
-            ],
-            "properties": {
-              "transfer_ownership": {
-                "type": "object",
-                "required": [
-                  "new_owner"
-                ],
-                "properties": {
-                  "expiry": {
-                    "anyOf": [
-                      {
-                        "$ref": "#/definitions/Expiration"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "new_owner": {
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "description": "Accept the pending ownership transfer.\n\nCan only be called by the pending owner.",
-            "type": "string",
-            "enum": [
-              "accept_ownership"
-            ]
-          },
-          {
-            "description": "Give up the contract's ownership and the possibility of appointing a new owner.\n\nCan only be invoked by the contract's current owner.\n\nAny existing pending ownership transfer is canceled.",
-            "type": "string",
-            "enum": [
-              "renounce_ownership"
-            ]
-          }
-        ]
-      },
       "Addr": {
         "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
         "type": "string"
@@ -318,53 +333,6 @@
           }
         },
         "additionalProperties": false
-      },
-      "Expiration": {
-        "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
-        "oneOf": [
-          {
-            "description": "AtHeight will expire when `env.block.height` >= height",
-            "type": "object",
-            "required": [
-              "at_height"
-            ],
-            "properties": {
-              "at_height": {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "description": "AtTime will expire when `env.block.time` >= time",
-            "type": "object",
-            "required": [
-              "at_time"
-            ],
-            "properties": {
-              "at_time": {
-                "$ref": "#/definitions/Timestamp"
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "description": "Never will never expire. Used to express the empty variant",
-            "type": "object",
-            "required": [
-              "never"
-            ],
-            "properties": {
-              "never": {
-                "type": "object",
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
       },
       "SocialMedia": {
         "oneOf": [
@@ -647,15 +615,30 @@
                 "format": "uint32",
                 "minimum": 0.0
               },
-              "offset": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint64",
-                "minimum": 0.0
+              "start_after": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Addr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "admins"
+        ],
+        "properties": {
+          "admins": {
+            "type": "object",
             "additionalProperties": false
           }
         },
@@ -677,6 +660,20 @@
   },
   "sudo": null,
   "responses": {
+    "admins": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_Addr",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Addr"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        }
+      }
+    },
     "config": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Config",

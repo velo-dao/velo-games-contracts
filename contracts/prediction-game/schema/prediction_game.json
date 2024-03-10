@@ -9,7 +9,7 @@
     "required": [
       "bet_token_denoms",
       "config",
-      "identifier"
+      "identifiers"
     ],
     "properties": {
       "bet_token_denoms": {
@@ -21,7 +21,16 @@
       "config": {
         "$ref": "#/definitions/Config"
       },
-      "identifier": {
+      "extra_admins": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "items": {
+          "$ref": "#/definitions/Addr"
+        }
+      },
+      "identifiers": {
         "type": "array",
         "items": {
           "$ref": "#/definitions/IdentifierBet"

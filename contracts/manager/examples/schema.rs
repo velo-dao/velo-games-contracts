@@ -1,5 +1,5 @@
 use cosmwasm_schema::write_api;
-use general::users::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use manager::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 fn main() {
     write_api! {

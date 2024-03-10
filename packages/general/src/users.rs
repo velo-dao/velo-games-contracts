@@ -1,14 +1,13 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Timestamp};
-use cw_ownable::cw_ownable_execute;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub config: Config,
+    pub extra_admins: Option<Vec<Addr>>,
 }
 
 #[allow(clippy::large_enum_variant)]
-#[cw_ownable_execute]
 #[cw_serde]
 pub enum ExecuteMsg {
     UpdateConfig {
@@ -16,6 +15,9 @@ pub enum ExecuteMsg {
     },
     AddGame {
         address: Addr,
+    },
+    AddGames {
+        addresses: Vec<Addr>,
     },
     RemoveGame {
         address: Addr,
@@ -34,6 +36,12 @@ pub enum ExecuteMsg {
         user: Addr,
         experience: u64,
         elo: Option<Elo>,
+    },
+    AddAdmin {
+        new_admin: Addr,
+    },
+    RemoveAdmin {
+        old_admin: Addr,
     },
 }
 
@@ -95,9 +103,11 @@ pub enum QueryMsg {
     GameRegistered { game_address: Addr },
     #[returns(Vec<User>)]
     Users {
-        offset: Option<u64>,
+        start_after: Option<Addr>,
         limit: Option<u32>,
     },
+    #[returns(Vec<Addr>)]
+    Admins {},
 }
 
 #[cw_serde]

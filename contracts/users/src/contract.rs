@@ -1,15 +1,16 @@
 use censor::Censor;
 use cosmwasm_std::{
-    entry_point, to_json_binary, DepsMut, Empty, Env, MessageInfo, Order, Response, Storage, StdError,
+    entry_point, to_json_binary, DepsMut, Empty, Env, MessageInfo, Order, Response, StdError,
+    Storage,
 };
 use cosmwasm_std::{Addr, Binary, Deps, StdResult};
 use cw2::set_contract_version;
-use cw_ownable::{assert_owner, initialize_owner};
-use general::users::{Config, Elo, ExecuteMsg, InstantiateMsg, QueryMsg, User, MigrateMsg};
+use cw_storage_plus::Bound;
+use general::users::{Config, Elo, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, User};
 use url::Url;
 
 use crate::error::ContractError;
-use crate::state::{ADDRESS_TO_USER, CONFIG, GAME_CONTRACTS, NUM_USERS, USERNAME_TO_USER};
+use crate::state::{ADDRESS_TO_USER, ADMINS, CONFIG, GAME_CONTRACTS, NUM_USERS, USERNAME_TO_USER};
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -25,20 +26,22 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    initialize_owner(
-        deps.storage,
-        deps.api,
-        Some(&info.sender.clone().into_string()),
-    )?;
+    let mut admins = vec![info.sender];
+    if let Some(admins_list) = msg.extra_admins {
+        for admin in admins_list {
+            deps.api.addr_validate(admin.as_str())?;
+            admins.push(admin);
+        }
+    }
 
+    ADMINS.save(deps.storage, &admins)?;
     NUM_USERS.save(deps.storage, &0)?;
     CONFIG.save(deps.storage, &msg.config)?;
 
     Ok(Response::new()
         .add_attribute("action", "instantiate")
         .add_attribute("contract_name", CONTRACT_NAME)
-        .add_attribute("contract_version", CONTRACT_VERSION)
-        .add_attribute("owner", info.sender))
+        .add_attribute("contract_version", CONTRACT_VERSION))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -49,9 +52,9 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::UpdateOwnership(action) => update_ownership(deps, env, info, action),
         ExecuteMsg::UpdateConfig { config } => update_config(deps, info, config),
         ExecuteMsg::AddGame { address } => add_game(deps, info, address),
+        ExecuteMsg::AddGames { addresses } => add_games(deps, info, addresses),
         ExecuteMsg::RemoveGame { address } => remove_game(deps, info, address),
         ExecuteMsg::ModifyUser { user } => modify_user(deps, env, info, user),
         ExecuteMsg::ModifyVerification {
@@ -64,17 +67,9 @@ pub fn execute(
             experience,
             elo,
         } => add_experience_and_elo(deps, info, user, experience, elo),
+        ExecuteMsg::AddAdmin { new_admin } => add_admin(deps, info, new_admin),
+        ExecuteMsg::RemoveAdmin { old_admin } => remove_admin(deps, info, old_admin),
     }
-}
-
-fn update_ownership(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    action: cw_ownable::Action,
-) -> Result<Response, ContractError> {
-    let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
-    Ok(Response::new().add_attributes(ownership.into_attributes()))
 }
 
 fn update_config(
@@ -82,7 +77,7 @@ fn update_config(
     info: MessageInfo,
     config: Config,
 ) -> Result<Response, ContractError> {
-    assert_owner(deps.storage, &info.sender)?;
+    assert_is_admin(deps.as_ref(), info)?;
 
     CONFIG.save(deps.storage, &config)?;
 
@@ -96,7 +91,7 @@ fn update_config(
 }
 
 fn add_game(deps: DepsMut, info: MessageInfo, game: Addr) -> Result<Response, ContractError> {
-    assert_owner(deps.storage, &info.sender)?;
+    assert_is_admin(deps.as_ref(), info)?;
 
     GAME_CONTRACTS.save(
         deps.storage,
@@ -109,8 +104,26 @@ fn add_game(deps: DepsMut, info: MessageInfo, game: Addr) -> Result<Response, Co
         .add_attribute("address", game))
 }
 
+fn add_games(
+    deps: DepsMut,
+    info: MessageInfo,
+    games: Vec<Addr>,
+) -> Result<Response, ContractError> {
+    assert_is_admin(deps.as_ref(), info)?;
+
+    for game in games {
+        GAME_CONTRACTS.save(
+            deps.storage,
+            deps.api.addr_validate(game.as_ref())?,
+            &Empty {},
+        )?;
+    }
+
+    Ok(Response::new().add_attribute("action", "add_games_contract"))
+}
+
 fn remove_game(deps: DepsMut, info: MessageInfo, game: Addr) -> Result<Response, ContractError> {
-    assert_owner(deps.storage, &info.sender)?;
+    assert_is_admin(deps.as_ref(), info)?;
 
     GAME_CONTRACTS.remove(deps.storage, game.clone());
 
@@ -158,7 +171,7 @@ fn modify_verification(
     username: String,
     is_verified: bool,
 ) -> Result<Response, ContractError> {
-    assert_owner(deps.storage, &info.sender)?;
+    assert_is_admin(deps.as_ref(), info)?;
 
     let mut user = USERNAME_TO_USER.load(deps.storage, username.to_owned())?;
     user.is_verified = Some(is_verified);
@@ -176,7 +189,7 @@ fn reset_elo(
     info: MessageInfo,
     elo_substraction: Option<u64>,
 ) -> Result<Response, ContractError> {
-    assert_owner(deps.storage, &info.sender)?;
+    assert_is_admin(deps.as_ref(), info)?;
 
     let all_addresses: Vec<Addr> = ADDRESS_TO_USER
         .range(deps.storage, None, None, Order::Ascending)
@@ -258,17 +271,53 @@ fn add_experience_and_elo(
         .add_attribute("elo_modification", elo.is_some().to_string()))
 }
 
+fn add_admin(deps: DepsMut, info: MessageInfo, new_admin: Addr) -> Result<Response, ContractError> {
+    assert_is_admin(deps.as_ref(), info)?;
+    deps.api.addr_validate(new_admin.as_ref())?;
+    let mut admins = ADMINS.load(deps.storage)?;
+
+    admins.push(new_admin.clone());
+
+    ADMINS.save(deps.storage, &admins)?;
+
+    Ok(Response::new().add_attribute("add_admin", new_admin.to_string()))
+}
+
+fn remove_admin(
+    deps: DepsMut,
+    info: MessageInfo,
+    old_admin: Addr,
+) -> Result<Response, ContractError> {
+    assert_is_admin(deps.as_ref(), info)?;
+    let mut admins = ADMINS.load(deps.storage)?;
+    admins.retain(|admin| admin != old_admin);
+
+    if admins.is_empty() {
+        return Err(ContractError::NeedOneAdmin {});
+    }
+
+    ADMINS.save(deps.storage, &admins)?;
+    Ok(Response::new().add_attribute("remove_admin", old_admin.to_string()))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::UserByAddress { address } => to_json_binary(&query_user_by_address(deps, address)?),
-        QueryMsg::UserByUsername { username } => to_json_binary(&query_user_by_username(deps, username)?),
+        QueryMsg::UserByAddress { address } => {
+            to_json_binary(&query_user_by_address(deps, address)?)
+        }
+        QueryMsg::UserByUsername { username } => {
+            to_json_binary(&query_user_by_username(deps, username)?)
+        }
         QueryMsg::TotalUsers {} => to_json_binary(&query_total_users(deps)?),
         QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
         QueryMsg::GameRegistered { game_address } => {
             to_json_binary(&query_game_registered(deps, game_address)?)
         }
-        QueryMsg::Users { offset, limit } => to_json_binary(&query_users(deps, offset, limit)?),
+        QueryMsg::Users { start_after, limit } => {
+            to_json_binary(&query_users(deps, start_after, limit))
+        }
+        QueryMsg::Admins {} => to_json_binary(&query_admins(deps)?),
     }
 }
 
@@ -282,18 +331,17 @@ fn query_user_by_username(deps: Deps, username: String) -> StdResult<User> {
     Ok(user)
 }
 
-fn query_users(deps: Deps, offset: Option<u64>, limit: Option<u32>) -> StdResult<Vec<User>> {
+fn query_users(deps: Deps, start_after: Option<Addr>, limit: Option<u32>) -> Vec<User> {
     let limit = limit.unwrap_or(DEFAULT_MAX_LIMIT).min(DEFAULT_MAX_LIMIT);
-    let offset = offset.unwrap_or(0);
+    let start = start_after.map(Bound::exclusive);
     let users: Vec<User> = ADDRESS_TO_USER
-        .range(deps.storage, None, None, Order::Ascending)
-        .skip(offset as usize)
+        .range(deps.storage, start, None, Order::Ascending)
         .take(limit as usize)
-        .filter_map(|v| v.ok())
-        .map(|(_, v)| v)
+        .filter_map(Result::ok)
+        .map(|(_, user)| user)
         .collect();
 
-    Ok(users)
+    users
 }
 
 fn query_total_users(deps: Deps) -> StdResult<u128> {
@@ -308,6 +356,11 @@ fn query_config(deps: Deps) -> StdResult<Config> {
 
 fn query_game_registered(deps: Deps, game_address: Addr) -> StdResult<bool> {
     Ok(GAME_CONTRACTS.has(deps.storage, game_address))
+}
+
+fn query_admins(deps: Deps) -> StdResult<Vec<Addr>> {
+    let admins = ADMINS.load(deps.storage)?;
+    Ok(admins)
 }
 
 // Helpers
@@ -439,6 +492,18 @@ fn validate_user(storage: &mut dyn Storage, user: &User) -> Result<(), ContractE
     }
 
     Ok(())
+}
+
+fn assert_is_admin(deps: Deps, info: MessageInfo) -> StdResult<bool> {
+    let admins = ADMINS.load(deps.storage)?;
+    if !admins.contains(&info.sender) {
+        return Err(StdError::generic_err(format!(
+            "Only an admin can execute this function. Sender: {}",
+            info.sender
+        )));
+    }
+
+    Ok(true)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

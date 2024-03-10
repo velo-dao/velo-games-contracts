@@ -61,7 +61,15 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &msg.config)?;
     NEXT_ROUND_ID.save(deps.storage, &0u128)?;
     IS_HALTED.save(deps.storage, &false)?;
-    ADMINS.save(deps.storage, &vec![info.sender])?;
+    let mut admins = vec![info.sender];
+    if let Some(admins_list) = msg.extra_admins {
+        for admin in admins_list {
+            deps.api.addr_validate(admin.as_str())?;
+            admins.push(admin);
+        }
+    }
+
+    ADMINS.save(deps.storage, &admins)?;
     ORACLE.save(
         deps.storage,
         &deps.api.addr_validate(
@@ -71,7 +79,7 @@ pub fn instantiate(
         )?,
     )?;
 
-    for each_identifier in msg.identifier {
+    for each_identifier in msg.identifiers {
         PRICE_IDENTIFIERS.save(
             deps.storage,
             each_identifier.denom,

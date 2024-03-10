@@ -5,6 +5,5 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
-cw-ownable      = { workspace = true }
-cosmwasm-schema = { workspace = true }
-cosmwasm-std    = { workspace = true }
+cosmwasm-schema.workspace = true
+cosmwasm-std.workspace = true

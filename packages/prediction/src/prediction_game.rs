@@ -91,7 +91,9 @@ pub mod msg {
         pub oracle_addr: Option<Addr>,
         //What are we betting against
         pub bet_token_denoms: Vec<String>,
-        pub identifier: Vec<IdentifierBet>,
+        pub identifiers: Vec<IdentifierBet>,
+        // Additional admins for the contract
+        pub extra_admins: Option<Vec<Addr>>,
     }
 
     #[cw_serde]

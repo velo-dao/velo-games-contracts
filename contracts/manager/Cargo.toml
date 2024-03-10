@@ -1,5 +1,5 @@
 [package]
-name = "users"
+name = "manager"
 version = "0.1.4"
 edition = "2021"
 authors = ["Keyne"]
@@ -9,10 +9,10 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 cosmwasm-std.workspace = true
+cw-ownable.workspace = true
 thiserror.workspace = true
 cw2.workspace = true
 cw-storage-plus.workspace = true
 cosmwasm-schema.workspace = true
 general.workspace = true
-censor.workspace = true
-url.workspace = true
+prediction.workspace = true

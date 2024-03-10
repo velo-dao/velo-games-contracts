@@ -6,6 +6,7 @@ Repository that will contain all games
 
 | Name                                   | Description             |
 | -------------------------------------- | ----------------------- |
+| [`manager`](contracts/manager)   | Game manager contract |
 | [`prediction_game`](contracts/prediction-game)   | Prediction contract |
 | [`users`](contracts/users)   | Users contract |
 
