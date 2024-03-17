@@ -221,7 +221,7 @@ fn create_game(
         })?,
         funds: vec![],
         admin: Some(info.sender.to_string()),
-        label: "game".to_string(),
+        label: format!("game {}", env.block.height),
         salt: Binary::from(salt),
     };
 
