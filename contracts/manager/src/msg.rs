@@ -27,6 +27,7 @@ pub enum ExecuteMsg {
         oracle_addr: Option<Addr>,
         bet_token_denoms: Vec<String>,
         identifiers: Vec<IdentifierBet>,
+        label: String,
     },
     ModifyDevWallets {
         wallets: Vec<WalletInfo>,

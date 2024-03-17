@@ -116,6 +116,7 @@ pub fn execute(
             oracle_addr,
             bet_token_denoms,
             identifiers,
+            label,
         } => create_game(
             deps,
             env,
@@ -129,6 +130,7 @@ pub fn execute(
             oracle_addr,
             bet_token_denoms,
             identifiers,
+            label,
         ),
         ExecuteMsg::ModifyDevWallets {
             wallets,
@@ -189,12 +191,14 @@ fn create_game(
     oracle_addr: Option<Addr>,
     bet_token_denoms: Vec<String>,
     identifiers: Vec<IdentifierBet>,
+    label: String,
 ) -> Result<Response, ContractError> {
     assert_owner(deps.storage, &info.sender)?;
     let config = CONFIG.load(deps.storage)?;
     let canonical_creator = deps.api.addr_canonicalize(env.contract.address.as_str())?;
     let code_info_response = deps.querier.query_wasm_code_info(config.games_code_id)?;
-    let salt = info.sender.as_bytes();
+    let salt_str = env.block.height.to_string();
+    let salt = salt_str.as_bytes();
     let canonical_address =
         instantiate2_address(&code_info_response.checksum, &canonical_creator, salt)?;
     let address = deps.api.addr_humanize(&canonical_address)?;
@@ -221,7 +225,7 @@ fn create_game(
         })?,
         funds: vec![],
         admin: Some(info.sender.to_string()),
-        label: format!("game {}", env.block.height),
+        label,
         salt: Binary::from(salt),
     };
 
