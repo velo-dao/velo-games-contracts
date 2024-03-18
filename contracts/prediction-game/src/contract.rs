@@ -154,12 +154,13 @@ fn execute_collect_winnings(deps: DepsMut, info: MessageInfo) -> Result<Response
 
     let my_game_list = query_my_games_without_limit(deps.as_ref(), info.sender.clone())?;
     let live_round = LIVE_ROUND.load(deps.storage)?;
+    let next_round = NEXT_ROUND.load(deps.storage)?;
     let mut amount_commissionable = Uint128::zero();
 
     for game in my_game_list.my_game_list {
         let round_id = game.round_id;
 
-        if live_round.id == round_id {
+        if live_round.id == round_id || next_round.id == round_id {
             continue;
         }
 
