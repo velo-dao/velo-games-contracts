@@ -138,7 +138,7 @@ fn modify_user(
     info: MessageInfo,
     mut user: User,
 ) -> Result<Response, ContractError> {
-    validate_user(deps.storage, &user)?;
+    validate_user(deps.storage, &user, info.sender.clone())?;
 
     let current_user = ADDRESS_TO_USER.may_load(deps.storage, info.sender.clone())?;
 
@@ -364,7 +364,11 @@ fn query_admins(deps: Deps) -> StdResult<Vec<Addr>> {
 }
 
 // Helpers
-fn validate_user(storage: &mut dyn Storage, user: &User) -> Result<(), ContractError> {
+fn validate_user(
+    storage: &mut dyn Storage,
+    user: &User,
+    sender: Addr,
+) -> Result<(), ContractError> {
     if user.experience.is_some() || user.elo.is_some() {
         return Err(ContractError::CantModifyExpOrElo {});
     }
@@ -384,6 +388,17 @@ fn validate_user(storage: &mut dyn Storage, user: &User) -> Result<(), ContractE
     let censor = Censor::Standard - "ass";
 
     if let Some(username) = user.username.to_owned() {
+        if USERNAME_TO_USER.has(storage, username.to_lowercase()) {
+            let user = ADDRESS_TO_USER.may_load(storage, sender)?;
+            match user {
+                Some(user) => {
+                    if user.username.is_some_and(|u| u != username) {
+                        return Err(ContractError::UsernameAlreadyExists {});
+                    }
+                }
+                None => return Err(ContractError::UsernameAlreadyExists {}),
+            }
+        }
         if !(3..=16).contains(&(username.len() as u64)) {
             return Err(ContractError::InvalidLength {
                 text: username.to_owned(),
@@ -396,10 +411,6 @@ fn validate_user(storage: &mut dyn Storage, user: &User) -> Result<(), ContractE
             return Err(ContractError::ProfanityFilter {
                 text: username.to_owned(),
             });
-        }
-
-        if USERNAME_TO_USER.has(storage, username.to_lowercase()) {
-            return Err(ContractError::UsernameAlreadyExists {});
         }
     } else {
         return Err(ContractError::UsernameCannotBeEmpty {});
