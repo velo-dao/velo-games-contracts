@@ -278,6 +278,7 @@ fn execute_collect_winnings(deps: DepsMut, info: MessageInfo) -> Result<Response
     Ok(resp
         .add_message(msg_send_winnings)
         .add_attribute("action", "collect-winnings")
+        .add_attribute("claimer", info.sender)
         .add_attribute("amount", amount_winnings.to_string()))
 }
 
@@ -416,6 +417,7 @@ fn execute_collect_winning_round(
         .add_message(msg_send_winnings)
         .add_attribute("action", "collect-winnings-round")
         .add_attribute("round_id", round_id)
+        .add_attribute("claimer", info.sender)
         .add_attribute("amount", amount_winnings.to_string()))
 }
 
