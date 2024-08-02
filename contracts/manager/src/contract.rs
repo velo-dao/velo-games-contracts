@@ -5,7 +5,7 @@ use cosmwasm_std::{
 use cw2::{get_contract_version, set_contract_version};
 use cw_ownable::{assert_owner, get_ownership, initialize_owner};
 use cw_storage_plus::Bound;
-use prediction::prediction_game::{msg::IdentifierBet, WalletInfo};
+use prediction::prediction_game::{DenomTicker, WalletInfo};
 
 use crate::{
     error::ContractError,
@@ -16,7 +16,7 @@ use crate::{
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const DEFAULT_MAX_LIMIT: u32 = 250;
+const DEFAULT_MAX_LIMIT: u32 = 1000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, _env: Env, _msg: Empty) -> Result<Response, ContractError> {
@@ -65,8 +65,11 @@ pub fn instantiate(
     let canonical_creator = deps.api.addr_canonicalize(env.contract.address.as_str())?;
     let code_info_response = deps.querier.query_wasm_code_info(msg.users_code_id)?;
     let salt = info.sender.as_bytes();
-    let canonical_address =
-        instantiate2_address(&code_info_response.checksum, &canonical_creator, salt)?;
+    let canonical_address = instantiate2_address(
+        code_info_response.checksum.as_slice(),
+        &canonical_creator,
+        salt,
+    )?;
     let address = deps.api.addr_humanize(&canonical_address)?;
 
     let config = Config {
@@ -113,9 +116,7 @@ pub fn execute(
             token_denom,
             exp_per_denom_bet,
             exp_per_denom_won,
-            oracle_addr,
-            bet_token_denoms,
-            identifiers,
+            denom_tickers,
             label,
         } => create_game(
             deps,
@@ -127,9 +128,7 @@ pub fn execute(
             token_denom,
             exp_per_denom_bet,
             exp_per_denom_won,
-            oracle_addr,
-            bet_token_denoms,
-            identifiers,
+            denom_tickers,
             label,
         ),
         ExecuteMsg::ModifyDevWallets {
@@ -151,9 +150,6 @@ pub fn execute(
             update_all_games,
             add_all_games_to_users_contract,
         ),
-        ExecuteMsg::UpdateOracleForAllGames { oracle_addr } => {
-            update_oracle_for_all_games(deps, info, oracle_addr)
-        }
         ExecuteMsg::HaltAllGames {} => halt_all_games(deps, info),
         ExecuteMsg::ResumeAllGames {} => resume_all_games(deps, info),
         ExecuteMsg::ManuallyAddGame {
@@ -188,9 +184,7 @@ fn create_game(
     token_denom: String,
     exp_per_denom_bet: u64,
     exp_per_denom_won: u64,
-    oracle_addr: Option<Addr>,
-    bet_token_denoms: Vec<String>,
-    identifiers: Vec<IdentifierBet>,
+    denom_tickers: Vec<DenomTicker>,
     label: String,
 ) -> Result<Response, ContractError> {
     assert_owner(deps.storage, &info.sender)?;
@@ -199,8 +193,11 @@ fn create_game(
     let code_info_response = deps.querier.query_wasm_code_info(config.games_code_id)?;
     let salt_str = env.block.height.to_string();
     let salt = salt_str.as_bytes();
-    let canonical_address =
-        instantiate2_address(&code_info_response.checksum, &canonical_creator, salt)?;
+    let canonical_address = instantiate2_address(
+        code_info_response.checksum.as_slice(),
+        &canonical_creator,
+        salt,
+    )?;
     let address = deps.api.addr_humanize(&canonical_address)?;
 
     GAMES.save(deps.storage, address.clone(), &Empty {})?;
@@ -218,9 +215,7 @@ fn create_game(
                 exp_per_denom_won,
                 dev_wallet_list: config.dev_wallet_list,
             },
-            oracle_addr,
-            bet_token_denoms,
-            identifiers,
+            denom_tickers,
             extra_admins: Some(vec![info.sender.clone()]),
         })?,
         funds: vec![],
@@ -262,7 +257,7 @@ fn modify_dev_wallets(
         return Err(ContractError::WrongRatio {});
     }
 
-    config.dev_wallet_list = wallets.clone();
+    config.dev_wallet_list.clone_from(&wallets);
     CONFIG.save(deps.storage, &config)?;
 
     let mut messages = vec![];
@@ -366,36 +361,6 @@ fn update_users_contract(
             "add_all_games_to_users_contract",
             add_all_games_to_users_contract.to_string(),
         ))
-}
-
-fn update_oracle_for_all_games(
-    deps: DepsMut,
-    info: MessageInfo,
-    oracle_addr: Addr,
-) -> Result<Response, ContractError> {
-    assert_owner(deps.storage, &info.sender)?;
-    let games: Vec<Addr> = GAMES
-        .range(deps.storage, None, None, Order::Ascending)
-        .filter_map(Result::ok)
-        .map(|(game, _)| game)
-        .collect();
-
-    let mut messages = vec![];
-    for game in games.iter() {
-        messages.push(WasmMsg::Execute {
-            contract_addr: game.to_string(),
-            msg: to_json_binary(
-                &prediction::prediction_game::msg::ExecuteMsg::ModifyOracleAddress {
-                    address: oracle_addr.clone(),
-                },
-            )?,
-            funds: vec![],
-        });
-    }
-
-    Ok(Response::new()
-        .add_messages(messages)
-        .add_attribute("action", "update_oracle_for_all_games"))
 }
 
 fn halt_all_games(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
@@ -508,6 +473,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GamesInfo { start_after, limit } => {
             to_json_binary(&query_games_info(deps, start_after, limit)?)
         }
+        QueryMsg::GamesInfoWithDuration {
+            start_after,
+            limit,
+            duration,
+        } => to_json_binary(&query_games_info_with_duration(
+            deps,
+            start_after,
+            limit,
+            duration,
+        )?),
     }
 }
 
@@ -548,6 +523,41 @@ fn query_games_info(
             game.clone(),
             &to_json_binary(&prediction::prediction_game::msg::QueryMsg::Config {})?,
         )?;
+
+        games_info.push(GameInfo {
+            address: game,
+            next_round_seconds: game_config.next_round_seconds,
+        })
+    }
+
+    Ok(games_info)
+}
+
+fn query_games_info_with_duration(
+    deps: Deps,
+    start_after: Option<Addr>,
+    limit: Option<u32>,
+    duration: Uint128,
+) -> StdResult<Vec<GameInfo>> {
+    let limit = limit.unwrap_or(DEFAULT_MAX_LIMIT).min(DEFAULT_MAX_LIMIT);
+    let start = start_after.map(Bound::exclusive);
+    let games: Vec<Addr> = GAMES
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit as usize)
+        .filter_map(Result::ok)
+        .map(|(game, _)| game)
+        .collect();
+
+    let mut games_info = vec![];
+    for game in games {
+        let game_config: prediction::prediction_game::Config = deps.querier.query_wasm_smart(
+            game.clone(),
+            &to_json_binary(&prediction::prediction_game::msg::QueryMsg::Config {})?,
+        )?;
+
+        if game_config.next_round_seconds != duration {
+            continue;
+        }
 
         games_info.push(GameInfo {
             address: game,

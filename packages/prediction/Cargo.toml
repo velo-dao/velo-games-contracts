@@ -11,4 +11,3 @@ cw-storage-plus.workspace = true
 schemars.workspace = true
 serde.workspace = true
 thiserror.workspace = true
-pyth-sdk-cw.workspace = true

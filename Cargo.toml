@@ -24,18 +24,18 @@ codegen-units = 1
 incremental = false
 
 [workspace.dependencies]
-cosmwasm-std = { version = "1.5.3", features = ["cosmwasm_1_2"] }
-thiserror = "1.0.58"
-cw-storage-plus = "1.2.0"
-schemars = "0.8.16"
-cosmwasm-schema = "1.5.3"
-cw2 = "1.1.2"
-cw-utils = "1.0.3"
-cw0 = "0.10.3"
-serde = { version = "1.0.197", default-features = false, features = ["derive"] }
+cosmwasm-std = { version = "2.1.1", features = ["cosmwasm_1_2"] }
+thiserror = "1.0.63"
+cw-storage-plus = "2.0.0"
+schemars = "0.8.21"
+cosmwasm-schema = "2.1.1"
+cw2 = "2.0.0"
+cw-utils = "2.0.0"
+serde = { version = "1.0.204", default-features = false, features = ["derive"] }
 prediction = { path = "./packages/prediction" }
 general = { path = "./packages/general" }
-pyth-sdk-cw = "1.2.0"
-cw-ownable = "0.5.1"
+cw-ownable = { git = "https://github.com/larry0x/cw-plus-plus", branch = "main" }
 censor = "0.3.0"
-url = "2.5.0"
+url = "2.5.2"
+neutron-sdk = "0.11.0"
+chrono = { "version" = "0.4.38", "default-features" = false }

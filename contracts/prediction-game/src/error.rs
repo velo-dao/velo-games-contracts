@@ -1,4 +1,4 @@
-use cw0::PaymentError;
+use cw_utils::PaymentError;
 use thiserror::Error;
 
 use cosmwasm_std::{OverflowError, StdError, Uint128};
@@ -47,4 +47,7 @@ pub enum ContractError {
 
     #[error("Denom {} must be added with its identifier first.", denom)]
     DenomNotRegistered { denom: String },
+
+    #[error("Price is too old, try again")]
+    PriceTooOld {},
 }

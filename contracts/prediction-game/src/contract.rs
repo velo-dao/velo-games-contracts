@@ -3,31 +3,32 @@ use std::vec;
 use crate::error::ContractError;
 use crate::state::{
     bet_info_key, bet_info_storage, claim_info_key, claim_info_storage, ADMINS, CONFIG, IS_HALTED,
-    LIVE_ROUND, NEXT_ROUND, NEXT_ROUND_ID, ORACLE, PRICE_IDENTIFIERS, ROUNDS, ROUND_DENOMS,
-    TOTALS_SPENT,
+    LIVE_ROUND, NEXT_ROUND, NEXT_ROUND_ID, PRICE_TICKERS, ROUNDS, ROUND_DENOMS, TOTALS_SPENT,
 };
-use cw0::one_coin;
-use prediction::prediction_game::msg::{
-    ExecuteMsg, IdentifierBet, InstantiateMsg, MigrateMsg, QueryMsg,
-};
+use chrono::DateTime;
+
+use cw_utils::one_coin;
+use neutron_sdk::bindings::oracle::query::{GetPriceResponse, OracleQuery};
+use neutron_sdk::bindings::oracle::types::CurrencyPair;
+use neutron_sdk::bindings::query::NeutronQuery;
+use prediction::prediction_game::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use prediction::prediction_game::{
-    AdminsResponse, BetInfo, ClaimInfo, ClaimInfoResponse, ConfigResponse, IdentifiersResponse,
-    MyGameResponse, PendingRewardResponse, PendingRewardRoundsResponse, RoundDenomsResponse,
-    RoundUsersResponse, TotalSpentResponse, WalletInfo,
+    AdminsResponse, BetInfo, ClaimInfo, ClaimInfoResponse, ConfigResponse, MyGameResponse,
+    PendingRewardResponse, PendingRewardRoundsResponse, RoundDenomsResponse, RoundUsersResponse,
+    TickersResponse, TotalSpentResponse, WalletInfo,
 };
 use prediction::prediction_game::{Config, Direction};
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, to_json_binary, Addr, BankMsg, Binary, Decimal, Deps, DepsMut, Env, Event, MessageInfo,
-    Order, Response, StdError, StdResult, Uint128, WasmMsg,
+    coins, to_json_binary, Addr, BankMsg, Binary, Decimal, Deps, DepsMut, Env, Event, Int128,
+    MessageInfo, Order, Response, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw_storage_plus::Bound;
 use general::users::ExecuteMsg::AddExperienceAndElo;
 use prediction::prediction_game::{FinishedRound, LiveRound, NextRound, FEE_PRECISION};
 use prediction::prediction_game::{MyCurrentPositionResponse, StatusResponse};
-use pyth_sdk_cw::{query_price_feed, Price, PriceFeedResponse, PriceIdentifier};
 
 // Query limits
 const DEFAULT_QUERY_LIMIT: u32 = 10;
@@ -36,7 +37,8 @@ const MAX_QUERY_LIMIT: u32 = 30;
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const ORACLE_ADDR: &str = "neutron1m2emc93m9gpwgsrsf2vylv9xvgqh654630v7dfrhrkmr5slly53spg85wv";
+const USD_TICKER: &str = "USD";
+const MAX_OLD_PRICE_TIME: u64 = 10;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -70,34 +72,22 @@ pub fn instantiate(
     }
 
     ADMINS.save(deps.storage, &admins)?;
-    ORACLE.save(
-        deps.storage,
-        &deps.api.addr_validate(
-            msg.oracle_addr
-                .unwrap_or(Addr::unchecked(ORACLE_ADDR))
-                .as_ref(),
-        )?,
-    )?;
 
-    for each_identifier in msg.identifiers {
-        PRICE_IDENTIFIERS.save(
-            deps.storage,
-            each_identifier.denom,
-            &each_identifier.identifier,
-        )?;
-    }
-
-    if msg.bet_token_denoms.is_empty() {
+    if msg.denom_tickers.is_empty() {
         return Err(ContractError::DenomsEmpty {});
     }
 
-    for each_denom in msg.bet_token_denoms.clone() {
-        if !PRICE_IDENTIFIERS.has(deps.storage, each_denom.clone()) {
-            return Err(ContractError::DenomNotRegistered { denom: each_denom });
-        }
+    for each_denom_ticker in msg.denom_tickers.iter() {
+        PRICE_TICKERS.save(
+            deps.storage,
+            each_denom_ticker.denom.clone(),
+            &each_denom_ticker.ticker.clone(),
+        )?;
     }
 
-    ROUND_DENOMS.save(deps.storage, &msg.bet_token_denoms)?;
+    let bet_token_denoms = msg.denom_tickers.iter().map(|x| x.denom.clone()).collect();
+
+    ROUND_DENOMS.save(deps.storage, &bet_token_denoms)?;
 
     Ok(Response::new().add_attribute("method", "instantiate_prediction_game"))
 }
@@ -114,36 +104,51 @@ pub fn migrate(deps: DepsMut, _env: Env, MigrateMsg {}: MigrateMsg) -> StdResult
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut,
+    deps: DepsMut<NeutronQuery>,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::UpdateConfig { config } => execute_update_config(deps, info, config),
-        ExecuteMsg::BetBear { round_id, amount } => {
-            execute_bet(deps, info, env, round_id, Direction::Bear, amount)
+        ExecuteMsg::UpdateConfig { config } => {
+            execute_update_config(deps.into_empty(), info, config)
         }
-        ExecuteMsg::BetBull { round_id, amount } => {
-            execute_bet(deps, info, env, round_id, Direction::Bull, amount)
-        }
+        ExecuteMsg::BetBear { round_id, amount } => execute_bet(
+            deps.into_empty(),
+            info,
+            env,
+            round_id,
+            Direction::Bear,
+            amount,
+        ),
+        ExecuteMsg::BetBull { round_id, amount } => execute_bet(
+            deps.into_empty(),
+            info,
+            env,
+            round_id,
+            Direction::Bull,
+            amount,
+        ),
         ExecuteMsg::CloseRound {} => execute_close_round(deps, env),
-        ExecuteMsg::CollectWinnings {} => execute_collect_winnings(deps, info),
+        ExecuteMsg::CollectWinnings {} => execute_collect_winnings(deps.into_empty(), info),
         ExecuteMsg::CollectionWinningRound { round_id } => {
-            execute_collect_winning_round(deps, info, round_id)
+            execute_collect_winning_round(deps.into_empty(), info, round_id)
         }
-        ExecuteMsg::Halt {} => execute_update_halt(deps, info, true),
-        ExecuteMsg::Resume {} => execute_update_halt(deps, info, false),
-        ExecuteMsg::AddAdmin { new_admin } => execute_add_admin(deps, info, new_admin),
-        ExecuteMsg::RemoveAdmin { old_admin } => execute_remove_admin(deps, info, old_admin),
+        ExecuteMsg::Halt {} => execute_update_halt(deps.into_empty(), info, true),
+        ExecuteMsg::Resume {} => execute_update_halt(deps.into_empty(), info, false),
+        ExecuteMsg::AddAdmin { new_admin } => execute_add_admin(deps.into_empty(), info, new_admin),
+        ExecuteMsg::RemoveAdmin { old_admin } => {
+            execute_remove_admin(deps.into_empty(), info, old_admin)
+        }
         ExecuteMsg::ModifyDevWallet { new_dev_wallets } => {
-            execute_modify_dev_wallets(deps, info, new_dev_wallets)
+            execute_modify_dev_wallets(deps.into_empty(), info, new_dev_wallets)
         }
-        ExecuteMsg::ModifyOracleAddress { address } => {
-            execute_modify_oracle_address(deps, info, address)
+        ExecuteMsg::AddTicker { denom, ticker } => {
+            execute_add_ticker(deps.into_empty(), info, denom, ticker)
         }
-        ExecuteMsg::AddIdentifier { identifier } => execute_add_identifier(deps, info, identifier),
-        ExecuteMsg::ModifyBetArray { denoms } => execute_modify_bet_array(deps, info, denoms),
+        ExecuteMsg::ModifyBetArray { denoms } => {
+            execute_modify_bet_array(deps.into_empty(), info, denoms)
+        }
     }
 }
 
@@ -245,7 +250,10 @@ fn execute_collect_winnings(deps: DepsMut, info: MessageInfo) -> Result<Response
         for dev_wallet in config.clone().dev_wallet_list {
             let token_transfer_msg = BankMsg::Send {
                 to_address: dev_wallet.address.to_string(),
-                amount: coins((dev_fee * dev_wallet.ratio).u128(), &config.token_denom),
+                amount: coins(
+                    dev_fee.mul_floor(dev_wallet.ratio).u128(),
+                    &config.token_denom,
+                ),
             };
             messages_dev_fees.push(token_transfer_msg)
         }
@@ -383,7 +391,10 @@ fn execute_collect_winning_round(
         for dev_wallet in config.clone().dev_wallet_list {
             let token_transfer_msg = BankMsg::Send {
                 to_address: dev_wallet.address.to_string(),
-                amount: coins((dev_fee * dev_wallet.ratio).u128(), &config.token_denom),
+                amount: coins(
+                    dev_fee.mul_floor(dev_wallet.ratio).u128(),
+                    &config.token_denom,
+                ),
             };
             messages_dev_fees.push(token_transfer_msg)
         }
@@ -540,8 +551,8 @@ fn execute_bet(
     Ok(resp.add_message(wasm_message))
 }
 
-fn execute_close_round(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
-    assert_not_halted(deps.as_ref())?;
+fn execute_close_round(deps: DepsMut<NeutronQuery>, env: Env) -> Result<Response, ContractError> {
+    assert_not_halted(deps.as_ref().into_empty())?;
     let now = env.block.time;
     let config = CONFIG.load(deps.storage)?;
     let mut resp: Response = Response::new();
@@ -550,12 +561,13 @@ fn execute_close_round(deps: DepsMut, env: Env) -> Result<Response, ContractErro
     match &maybe_live_round {
         Some(live_round) => {
             if now >= live_round.close_time {
-                let finished_round = compute_round_close(deps.as_ref(), live_round)?;
+                let finished_round =
+                    compute_round_close(deps.as_ref(), env.block.time.seconds(), live_round)?;
                 ROUNDS.save(deps.storage, live_round.id.u128(), &finished_round)?;
                 resp = resp
                     .add_attribute("action", "finished-round")
                     .add_attribute("round_id", live_round.id.to_string())
-                    .add_attribute("close_price", finished_round.close_price.price.to_string())
+                    .add_attribute("close_price", finished_round.close_price.to_string())
                     .add_attribute(
                         "winner",
                         match finished_round.winner {
@@ -613,19 +625,19 @@ fn execute_close_round(deps: DepsMut, env: Env) -> Result<Response, ContractErro
                 resp = resp
                     .add_attribute("action", "bidding-close")
                     .add_attribute("round_id", live_round.id.to_string())
-                    .add_attribute("open_price", live_round.open_price.price.to_string())
+                    .add_attribute("open_price", live_round.open_price.to_string())
                     .add_attribute("bear_amount", live_round.bear_amount.to_string())
                     .add_attribute("bull_amount", live_round.bull_amount.to_string());
                 LIVE_ROUND.save(deps.storage, &live_round)?;
                 NEXT_ROUND.remove(deps.storage);
-                let new_round_id = new_bid_round(deps, env)?;
+                let new_round_id = new_bid_round(deps.into_empty(), env)?;
                 resp = resp
                     .add_attribute("action", "new-round")
                     .add_attribute("round_id", new_round_id);
             }
         }
         None => {
-            let new_round_id = new_bid_round(deps, env)?;
+            let new_round_id = new_bid_round(deps.into_empty(), env)?;
             resp = resp
                 .add_attribute("action", "new-round")
                 .add_attribute("round_id", new_round_id);
@@ -695,7 +707,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::TotalSpent { player } => to_json_binary(&query_total_spent(deps, player)?),
         QueryMsg::GetAdmins {} => to_json_binary(&query_get_admins(deps)?),
         QueryMsg::GetRoundDenoms {} => to_json_binary(&query_get_round_denoms(deps)?),
-        QueryMsg::GetIdentifiers {} => to_json_binary(&query_get_identifiers(deps)?),
+        QueryMsg::GetTickers {} => to_json_binary(&query_get_tickers(deps)?),
     }
 }
 
@@ -1089,14 +1101,14 @@ pub fn query_get_round_denoms(deps: Deps) -> StdResult<RoundDenomsResponse> {
     Ok(RoundDenomsResponse { denoms })
 }
 
-pub fn query_get_identifiers(deps: Deps) -> StdResult<IdentifiersResponse> {
-    let identifiers: Vec<PriceIdentifier> = PRICE_IDENTIFIERS
+pub fn query_get_tickers(deps: Deps) -> StdResult<TickersResponse> {
+    let tickers: Vec<String> = PRICE_TICKERS
         .range(deps.storage, None, None, Order::Ascending)
         .filter_map(|v| v.ok())
         .map(|(_, v)| v)
         .collect();
 
-    Ok(IdentifiersResponse { identifiers })
+    Ok(TickersResponse { tickers })
 }
 
 fn assert_is_current_round(deps: Deps, round_id: Uint128) -> StdResult<NextRound> {
@@ -1120,8 +1132,12 @@ fn compute_gaming_fee(deps: Deps, gross: Uint128) -> StdResult<Uint128> {
         .map_err(|e| StdError::generic_err(e.to_string()))
 }
 
-fn compute_round_open(deps: Deps, env: Env, round: &NextRound) -> Result<LiveRound, ContractError> {
-    let open_price = get_current_price(deps, round.denom.clone())?;
+fn compute_round_open(
+    deps: Deps<NeutronQuery>,
+    env: Env,
+    round: &NextRound,
+) -> Result<LiveRound, ContractError> {
+    let open_price = get_current_price(deps, env.block.time.seconds(), round.denom.clone())?;
     let config = CONFIG.load(deps.storage)?;
 
     Ok(LiveRound {
@@ -1139,22 +1155,37 @@ fn compute_round_open(deps: Deps, env: Env, round: &NextRound) -> Result<LiveRou
     })
 }
 
-fn get_current_price(deps: Deps, denom: String) -> Result<Price, ContractError> {
-    let identifier = PRICE_IDENTIFIERS.load(deps.storage, denom)?;
-    let oracle_addr = ORACLE.load(deps.storage)?;
-    let price_feed_response: PriceFeedResponse =
-        query_price_feed(&deps.querier, oracle_addr, identifier)?;
-    let price_feed = price_feed_response.price_feed;
+fn get_current_price(
+    deps: Deps<NeutronQuery>,
+    current_timestamp: u64,
+    denom: String,
+) -> Result<Int128, ContractError> {
+    let ticker = PRICE_TICKERS.load(deps.storage, denom)?;
+    let oracle_query = OracleQuery::GetPrice {
+        currency_pair: CurrencyPair {
+            base: ticker,
+            quote: USD_TICKER.to_string(),
+        },
+    };
+    let price_response: GetPriceResponse = deps.querier.query(&oracle_query.into())?;
+    let dt = DateTime::parse_from_rfc3339(&price_response.price.block_timestamp)
+        .expect("Failed to parse timestamp");
+    // Convert to a Unix timestamp (seconds since the Unix epoch)
+    let unix_timestamp = dt.timestamp();
 
-    let current_price = price_feed.get_price_unchecked();
+    assert_price_not_too_old(current_timestamp, unix_timestamp as u64)?;
 
-    Ok(current_price)
+    Ok(price_response.price.price)
 }
 
-fn compute_round_close(deps: Deps, round: &LiveRound) -> Result<FinishedRound, ContractError> {
-    let close_price = get_current_price(deps, round.denom.clone())?;
+fn compute_round_close(
+    deps: Deps<NeutronQuery>,
+    current_timestamp: u64,
+    round: &LiveRound,
+) -> Result<FinishedRound, ContractError> {
+    let close_price = get_current_price(deps, current_timestamp, round.denom.clone())?;
 
-    let winner = match close_price.price.cmp(&round.open_price.price) {
+    let winner = match close_price.cmp(&round.open_price) {
         std::cmp::Ordering::Greater =>
         /* Bulls win */
         {
@@ -1192,6 +1223,17 @@ fn assert_not_halted(deps: Deps) -> StdResult<bool> {
         return Err(StdError::generic_err("Contract is halted"));
     }
     Ok(true)
+}
+
+fn assert_price_not_too_old(
+    current_timestamp: u64,
+    price_timestamp: u64,
+) -> Result<(), ContractError> {
+    if price_timestamp < current_timestamp - MAX_OLD_PRICE_TIME {
+        return Err(ContractError::PriceTooOld {});
+    }
+
+    Ok(())
 }
 
 fn execute_update_halt(
@@ -1271,34 +1313,16 @@ fn execute_modify_dev_wallets(
     Ok(Response::new().add_attribute("action", "new_dev_wallets"))
 }
 
-fn execute_modify_oracle_address(
+fn execute_add_ticker(
     deps: DepsMut,
     info: MessageInfo,
-    address: Addr,
+    denom: String,
+    ticker: String,
 ) -> Result<Response, ContractError> {
     assert_is_admin(deps.as_ref(), info)?;
-    ORACLE.save(deps.storage, &deps.api.addr_validate(address.as_ref())?)?;
+    PRICE_TICKERS.save(deps.storage, denom, &ticker)?;
 
-    Ok(Response::new()
-        .add_attribute("action", "new_oracle_address")
-        .add_attribute("address", address))
-}
-
-fn execute_add_identifier(
-    deps: DepsMut,
-    info: MessageInfo,
-    identifier: IdentifierBet,
-) -> Result<Response, ContractError> {
-    assert_is_admin(deps.as_ref(), info)?;
-    PRICE_IDENTIFIERS.save(
-        deps.storage,
-        identifier.denom.clone(),
-        &identifier.identifier,
-    )?;
-
-    Ok(Response::new()
-        .add_attribute("action", "add_identifier")
-        .add_attribute("address", identifier.denom))
+    Ok(Response::new().add_attribute("action", "add_identifier"))
 }
 
 fn execute_modify_bet_array(
@@ -1313,7 +1337,7 @@ fn execute_modify_bet_array(
     }
 
     for each_denom in denoms.clone() {
-        if !PRICE_IDENTIFIERS.has(deps.storage, each_denom.clone()) {
+        if !PRICE_TICKERS.has(deps.storage, each_denom.clone()) {
             return Err(ContractError::DenomNotRegistered { denom: each_denom });
         }
     }

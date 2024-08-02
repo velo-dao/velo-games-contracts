@@ -2,7 +2,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
 use general::users::Config as UsersConfig;
-use prediction::prediction_game::{msg::IdentifierBet, WalletInfo};
+use prediction::prediction_game::{DenomTicker, WalletInfo};
 
 use crate::state::Config;
 
@@ -24,9 +24,7 @@ pub enum ExecuteMsg {
         token_denom: String,
         exp_per_denom_bet: u64,
         exp_per_denom_won: u64,
-        oracle_addr: Option<Addr>,
-        bet_token_denoms: Vec<String>,
-        identifiers: Vec<IdentifierBet>,
+        denom_tickers: Vec<DenomTicker>,
         label: String,
     },
     ModifyDevWallets {
@@ -42,10 +40,6 @@ pub enum ExecuteMsg {
         address: Addr,
         update_all_games: bool,
         add_all_games_to_users_contract: bool,
-    },
-
-    UpdateOracleForAllGames {
-        oracle_addr: Addr,
     },
 
     HaltAllGames {},
@@ -77,6 +71,12 @@ pub enum QueryMsg {
     GamesInfo {
         start_after: Option<Addr>,
         limit: Option<u32>,
+    },
+    #[returns(Vec<GameInfo>)]
+    GamesInfoWithDuration {
+        start_after: Option<Addr>,
+        limit: Option<u32>,
+        duration: Uint128,
     },
 }
 

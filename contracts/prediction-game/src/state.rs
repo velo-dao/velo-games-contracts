@@ -2,7 +2,6 @@ use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 use prediction::prediction_game::{BetInfo, BetInfoKey, ClaimInfo, ClaimInfoKey};
 use prediction::prediction_game::{Config, FinishedRound, LiveRound, NextRound};
-use pyth_sdk_cw::PriceIdentifier;
 
 /// Top level storage key. Values must not conflict.
 /// Each key is only one byte long to ensure we use the smallest possible storage keys.
@@ -16,14 +15,13 @@ pub enum TopKey {
     Rounds = b'r',
     Admins = b'a',
     TotalsSpent = b't',
-    Oracle = b'o',
-    PriceIdentifiers = b'p',
+    PriceTickers = b'p',
     RoundDenoms = b'd',
 }
 
 impl TopKey {
     const fn as_str(&self) -> &str {
-        let array_ref = unsafe { std::mem::transmute::<_, &[u8; 1]>(self) };
+        let array_ref = unsafe { std::mem::transmute::<&TopKey, &[u8; 1]>(self) };
         match core::str::from_utf8(array_ref) {
             Ok(a) => a,
             Err(_) => panic!("Non-utf8 enum value found. Use a-z, A-Z and 0-9"),
@@ -45,10 +43,8 @@ pub const ADMINS: Item<Vec<Addr>> = Item::new(TopKey::Admins.as_str());
 
 pub const TOTALS_SPENT: Map<Addr, Uint128> = Map::new(TopKey::TotalsSpent.as_str());
 
-pub const ORACLE: Item<Addr> = Item::new(TopKey::Oracle.as_str());
-
-pub const PRICE_IDENTIFIERS: Map<String, PriceIdentifier> =
-    Map::new(TopKey::PriceIdentifiers.as_str());
+// Map denom -> Skip Go ticker
+pub const PRICE_TICKERS: Map<String, String> = Map::new(TopKey::PriceTickers.as_str());
 
 pub const ROUND_DENOMS: Item<Vec<String>> = Item::new(TopKey::RoundDenoms.as_str());
 
@@ -70,7 +66,7 @@ impl<'a> IndexList<BetInfo> for BetInfoIndexes<'a> {
     }
 }
 
-pub fn bet_info_storage<'a>() -> IndexedMap<'a, BetInfoKey, BetInfo, BetInfoIndexes<'a>> {
+pub fn bet_info_storage<'a>() -> IndexedMap<BetInfoKey, BetInfo, BetInfoIndexes<'a>> {
     let indexes = BetInfoIndexes {
         player: MultiIndex::new(
             |_pk: &[u8], d: &BetInfo| d.player.clone(),
@@ -103,7 +99,7 @@ impl<'a> IndexList<ClaimInfo> for ClaimInfoIndexes<'a> {
     }
 }
 
-pub fn claim_info_storage<'a>() -> IndexedMap<'a, ClaimInfoKey, ClaimInfo, ClaimInfoIndexes<'a>> {
+pub fn claim_info_storage<'a>() -> IndexedMap<ClaimInfoKey, ClaimInfo, ClaimInfoIndexes<'a>> {
     let indexes = ClaimInfoIndexes {
         player: MultiIndex::new(
             |_pk: &[u8], d: &ClaimInfo| d.player.clone(),

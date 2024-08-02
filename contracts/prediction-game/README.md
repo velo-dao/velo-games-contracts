@@ -12,12 +12,17 @@ The contract will be instantiated with the following message:
 
 ```rust
 pub struct InstantiateMsg {
-        /* Mutable params */
-        pub config: Config,
-        pub oracle_addr: Option<Addr>,
-        // What are we betting against
-        pub bet_token_denoms: Vec<String>,
-        pub identifier: Vec<IdentifierBet>,
+    /* Mutable params */
+    pub config: Config,
+    // What are we betting against
+    pub denom_tickers: Vec<DenomTicker>,
+    // Additional admins for the contract
+    pub extra_admins: Option<Vec<Addr>>,
+}
+
+pub struct DenomTicker {
+    pub denom: String,
+    pub ticker: String,
 }
 
 pub struct Config {
@@ -41,7 +46,7 @@ In the Config we provide the round information (duration, minimum bet and gaming
 The users contract is an additional contract that will keep the players information and will be used to add the XP/ELO to the players. 
 For each bet the user makes, the contract will add a certain `exp_per_denom_bet` to the user. If the user wins, the contract will add an additional `exp_per_denom_won` for each denom amount won to the user.
 
-The games will rotate according to the `bet_token_denoms` array in the Instantiation message. The first round will be played with the first token, the second round with the second token, and so on. The `identifier` array will be used to define the identifier for each token for the Pyth Oracle. This identifier will be used to identify the token in the oracle.
+The games will rotate according to the `denom_tickers` array in the Instantiation message. The first round will be played with the first token, the second round with the second token, and so on. The `tickers` are used to fetch the prices from Skip Connect (Oracle) module.
 
 ## Execution
 

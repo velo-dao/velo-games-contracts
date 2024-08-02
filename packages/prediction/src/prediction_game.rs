@@ -1,8 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_schema::QueryResponses;
+use cosmwasm_std::Int128;
 use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
-use pyth_sdk_cw::Price;
-use pyth_sdk_cw::PriceIdentifier;
 
 pub const FEE_PRECISION: u128 = 100u128;
 
@@ -12,13 +11,13 @@ pub enum Direction {
     Bear,
 }
 
-impl ToString for Direction {
-    fn to_string(&self) -> String {
-        match self {
+impl std::fmt::Display for Direction {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let s = match self {
             Direction::Bull => "bull",
             Direction::Bear => "bear",
-        }
-        .to_string()
+        };
+        write!(f, "{}", s)
     }
 }
 
@@ -58,7 +57,7 @@ pub struct LiveRound {
     pub bid_time: Timestamp,
     pub open_time: Timestamp,
     pub close_time: Timestamp,
-    pub open_price: Price,
+    pub open_price: Int128,
     pub bull_amount: Uint128,
     pub bear_amount: Uint128,
     pub denom: String,
@@ -70,12 +69,18 @@ pub struct FinishedRound {
     pub bid_time: Timestamp,
     pub open_time: Timestamp,
     pub close_time: Timestamp,
-    pub open_price: Price,
-    pub close_price: Price,
+    pub open_price: Int128,
+    pub close_price: Int128,
     pub winner: Option<Direction>,
     pub bull_amount: Uint128,
     pub bear_amount: Uint128,
     pub denom: String,
+}
+
+#[cw_serde]
+pub struct DenomTicker {
+    pub denom: String,
+    pub ticker: String,
 }
 
 pub mod msg {
@@ -88,18 +93,10 @@ pub mod msg {
     pub struct InstantiateMsg {
         /* Mutable params */
         pub config: Config,
-        pub oracle_addr: Option<Addr>,
-        //What are we betting against
-        pub bet_token_denoms: Vec<String>,
-        pub identifiers: Vec<IdentifierBet>,
+        // What are we betting against
+        pub denom_tickers: Vec<DenomTicker>,
         // Additional admins for the contract
         pub extra_admins: Option<Vec<Addr>>,
-    }
-
-    #[cw_serde]
-    pub struct IdentifierBet {
-        pub denom: String,
-        pub identifier: PriceIdentifier,
     }
 
     #[cw_serde]
@@ -149,11 +146,9 @@ pub mod msg {
         ModifyDevWallet {
             new_dev_wallets: Vec<WalletInfo>,
         },
-        ModifyOracleAddress {
-            address: Addr,
-        },
-        AddIdentifier {
-            identifier: IdentifierBet,
+        AddTicker {
+            denom: String,
+            ticker: String,
         },
         ModifyBetArray {
             denoms: Vec<String>,
@@ -207,8 +202,8 @@ pub mod msg {
         GetAdmins {},
         #[returns(RoundDenomsResponse)]
         GetRoundDenoms {},
-        #[returns(IdentifiersResponse)]
-        GetIdentifiers {},
+        #[returns(TickersResponse)]
+        GetTickers {},
     }
 }
 
@@ -268,8 +263,8 @@ pub struct RoundDenomsResponse {
 }
 
 #[cw_serde]
-pub struct IdentifiersResponse {
-    pub identifiers: Vec<PriceIdentifier>,
+pub struct TickersResponse {
+    pub tickers: Vec<String>,
 }
 
 #[cw_serde]
