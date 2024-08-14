@@ -1,7 +1,7 @@
 use cw_utils::PaymentError;
 use thiserror::Error;
 
-use cosmwasm_std::{OverflowError, StdError, Uint128};
+use cosmwasm_std::{DivisionError, OverflowError, StdError, Uint128};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
@@ -13,6 +13,9 @@ pub enum ContractError {
 
     #[error("{0}")]
     Overflow(#[from] OverflowError),
+
+    #[error("{0}")]
+    DivisionError(#[from] DivisionError),
 
     #[error("Wrong denom sent")]
     InvalidFunds {},

@@ -10,6 +10,9 @@ license = "Apache-2.0"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+library = []
+
 [dependencies]
 cw2.workspace = true
 cosmwasm-std.workspace = true

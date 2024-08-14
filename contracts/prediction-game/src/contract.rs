@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::vec;
 
 use crate::error::ContractError;
@@ -38,6 +39,7 @@ const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const USD_TICKER: &str = "USD";
+const PRICE_DECIMALS: u64 = 18;
 const MAX_OLD_PRICE_TIME: u64 = 10;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -1174,8 +1176,25 @@ fn get_current_price(
     let unix_timestamp = dt.timestamp();
 
     assert_price_not_too_old(current_timestamp, unix_timestamp as u64)?;
+    let normalized_price = normalize_price(price_response)?;
 
-    Ok(price_response.price.price)
+    Ok(normalized_price)
+}
+
+fn normalize_price(price_response: GetPriceResponse) -> Result<Int128, ContractError> {
+    let price = price_response.price.price;
+    let normalized_price = match price_response.decimals.cmp(&PRICE_DECIMALS) {
+        Ordering::Greater => {
+            let divisor = i128::pow(10, (price_response.decimals - PRICE_DECIMALS) as u32);
+            price.checked_div(Int128::from(divisor))?
+        }
+        Ordering::Less => {
+            let multiplier = i128::pow(10, (PRICE_DECIMALS - price_response.decimals) as u32);
+            price.checked_mul(Int128::from(multiplier))?
+        }
+        Ordering::Equal => price,
+    };
+    Ok(normalized_price)
 }
 
 fn compute_round_close(

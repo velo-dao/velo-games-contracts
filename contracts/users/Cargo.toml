@@ -7,6 +7,9 @@ authors = ["Keyne"]
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+library = []
+
 [dependencies]
 cosmwasm-std.workspace = true
 thiserror.workspace = true
