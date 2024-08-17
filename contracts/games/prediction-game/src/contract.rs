@@ -28,8 +28,10 @@ use cosmwasm_std::{
 };
 use cw_storage_plus::Bound;
 use general::users::ExecuteMsg::AddExperienceAndElo;
-use prediction::prediction_game::{FinishedRound, LiveRound, NextRound, FEE_PRECISION};
+use prediction::prediction_game::{FinishedRound, LiveRound, NextRound};
 use prediction::prediction_game::{MyCurrentPositionResponse, StatusResponse};
+
+const FEE_PRECISION: u128 = 100;
 
 // Query limits
 const DEFAULT_QUERY_LIMIT: u32 = 10;
@@ -189,7 +191,7 @@ fn execute_collect_winnings(deps: DepsMut, info: MessageInfo) -> Result<Response
                     &ClaimInfo {
                         player: info.sender.clone(),
                         round_id,
-                        claimed_amount: winnings,
+                        claimed_amount: game.amount,
                     },
                 )?;
             }
@@ -232,7 +234,7 @@ fn execute_collect_winnings(deps: DepsMut, info: MessageInfo) -> Result<Response
                     &ClaimInfo {
                         player: info.sender.clone(),
                         round_id,
-                        claimed_amount: winnings,
+                        claimed_amount: round_winnings,
                     },
                 )?;
             }
@@ -451,7 +453,6 @@ fn execute_bet(
     let funds_sent = one_coin(&info)?;
 
     let totals = TOTALS_SPENT.may_load(deps.storage, info.clone().sender)?;
-
     if let Some(totals) = totals {
         TOTALS_SPENT.save(
             deps.storage,

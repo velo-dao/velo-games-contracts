@@ -3,8 +3,6 @@ use cosmwasm_schema::QueryResponses;
 use cosmwasm_std::Int128;
 use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
 
-pub const FEE_PRECISION: u128 = 100u128;
-
 #[cw_serde]
 pub enum Direction {
     Bull,
