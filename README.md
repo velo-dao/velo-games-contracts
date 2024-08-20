@@ -8,7 +8,7 @@ Repository that will contain all games
 | ---------------------------------------------------- | --------------------- |
 | [`manager`](contracts/managers/manager)              | Game manager contract |
 | [`prediction_game`](contracts/games/prediction-game) | Prediction contract   |
-| [`dao-bets`](contracts/games/dao-bets)               | DAO governed bets     |
+| [`dao-bets`](contracts/games/dao-bets-game)          | DAO governed bets     |
 | [`users`](contracts/others/users)                    | Users contract        |
 
 ### You can compile each contract:
