@@ -15,8 +15,9 @@ use neutron_sdk::bindings::query::NeutronQuery;
 use prediction::prediction_game::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use prediction::prediction_game::{
     AdminsResponse, BetInfo, ClaimInfo, ClaimInfoResponse, ConfigResponse, MyGameResponse,
-    PendingRewardResponse, PendingRewardRoundsResponse, RoundDenomsResponse, RoundUsersResponse,
-    TickersResponse, TotalSpentResponse, WalletInfo,
+    PendingRefundableAmountResponse, PendingRefundableAmountRoundsResponse, PendingRewardResponse,
+    PendingRewardRoundsResponse, RoundDenomsResponse, RoundUsersResponse, TickersResponse,
+    TotalSpentResponse, WalletInfo,
 };
 use prediction::prediction_game::{Config, Direction};
 
@@ -684,6 +685,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::MyPendingRewardRounds { player } => {
             to_json_binary(&query_my_pending_reward_rounds(deps, player)?)
         }
+        QueryMsg::MyRefundableAmount { player } => {
+            to_json_binary(&query_my_refundable_amount(deps, player)?)
+        }
+        QueryMsg::MyRefundableAmountRounds { player } => {
+            to_json_binary(&query_my_refundable_amount_rounds(deps, player)?)
+        }
         QueryMsg::GetUsersPerRound {
             round_id,
             start_after,
@@ -905,7 +912,7 @@ pub fn query_my_pending_reward(deps: Deps, player: Addr) -> StdResult<PendingRew
         let pool_shares = round.bear_amount + round.bull_amount;
 
         if round.bear_amount == Uint128::zero() || round.bull_amount == Uint128::zero() {
-            winnings += game.amount;
+            continue;
         } else {
             let round_winnings = match round.winner {
                 Some(Direction::Bull) => {
@@ -964,8 +971,7 @@ pub fn query_my_pending_reward_rounds(
         let pool_shares = round.bear_amount + round.bull_amount;
 
         if round.bear_amount == Uint128::zero() || round.bull_amount == Uint128::zero() {
-            winnings += game.amount;
-            winnings_per_round.push((round_id, game.amount));
+            continue;
         } else {
             let round_winnings = match round.winner {
                 Some(Direction::Bull) => {
@@ -1070,6 +1076,61 @@ pub fn query_my_pending_reward_round(
 
     Ok(PendingRewardResponse {
         pending_reward: winnings,
+    })
+}
+
+pub fn query_my_refundable_amount(
+    deps: Deps,
+    player: Addr,
+) -> StdResult<PendingRefundableAmountResponse> {
+    let my_game_list = query_my_games_without_limit(deps, player.clone())?;
+    let mut refundable_amount = Uint128::zero();
+
+    for game in my_game_list.my_game_list {
+        let round_id = game.round_id;
+        let round = ROUNDS.may_load(deps.storage, round_id.u128())?;
+
+        if round.is_none() {
+            continue;
+        }
+        let round = round.unwrap();
+
+        if round.bear_amount == Uint128::zero() || round.bull_amount == Uint128::zero() {
+            refundable_amount += game.amount;
+        }
+    }
+
+    Ok(PendingRefundableAmountResponse {
+        pending_refundable_amount: refundable_amount,
+    })
+}
+
+pub fn query_my_refundable_amount_rounds(
+    deps: Deps,
+    player: Addr,
+) -> StdResult<PendingRefundableAmountRoundsResponse> {
+    let my_game_list = query_my_games_without_limit(deps, player.clone())?;
+    let mut refundable_amount = Uint128::zero();
+    let mut refundable_amount_per_rounds: Vec<(Uint128, Uint128)> = vec![];
+
+    for game in my_game_list.my_game_list {
+        let round_id = game.round_id;
+        let round = ROUNDS.may_load(deps.storage, round_id.u128())?;
+
+        if round.is_none() {
+            continue;
+        }
+        let round = round.unwrap();
+
+        if round.bear_amount == Uint128::zero() || round.bull_amount == Uint128::zero() {
+            refundable_amount += game.amount;
+            refundable_amount_per_rounds.push((round_id, game.amount))
+        }
+    }
+
+    Ok(PendingRefundableAmountRoundsResponse {
+        pending_refundable_amount_rounds: refundable_amount_per_rounds,
+        pending_refundable_amount_total: refundable_amount,
     })
 }
 

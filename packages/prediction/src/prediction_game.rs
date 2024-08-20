@@ -174,14 +174,18 @@ pub mod msg {
         MyPendingReward { player: Addr },
         #[returns(PendingRewardRoundsResponse)]
         MyPendingRewardRounds { player: Addr },
+        #[returns(PendingRewardResponse)]
+        MyPendingRewardRound { round_id: Uint128, player: Addr },
+        #[returns(PendingRefundableAmountResponse)]
+        MyRefundableAmount { player: Addr },
+        #[returns(PendingRefundableAmountRoundsResponse)]
+        MyRefundableAmountRounds { player: Addr },
         #[returns(RoundUsersResponse)]
         GetUsersPerRound {
             round_id: Uint128,
             start_after: Option<Addr>,
             limit: Option<u32>,
         },
-        #[returns(PendingRewardResponse)]
-        MyPendingRewardRound { round_id: Uint128, player: Addr },
         #[returns(ClaimInfoResponse)]
         GetClaimInfoPerRound {
             round_id: Uint128,
@@ -248,6 +252,17 @@ pub struct PendingRewardResponse {
 pub struct PendingRewardRoundsResponse {
     pub pending_reward_rounds: Vec<(Uint128, Uint128)>,
     pub pending_reward_total: Uint128,
+}
+
+#[cw_serde]
+pub struct PendingRefundableAmountResponse {
+    pub pending_refundable_amount: Uint128,
+}
+
+#[cw_serde]
+pub struct PendingRefundableAmountRoundsResponse {
+    pub pending_refundable_amount_rounds: Vec<(Uint128, Uint128)>,
+    pub pending_refundable_amount_total: Uint128,
 }
 
 #[cw_serde]
