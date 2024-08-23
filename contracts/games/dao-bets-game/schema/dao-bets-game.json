@@ -194,15 +194,23 @@
             "type": "object",
             "required": [
               "description",
-              "end_timestamp",
+              "end_bet_timestamp",
               "options"
             ],
             "properties": {
               "description": {
                 "type": "string"
               },
-              "end_timestamp": {
+              "end_bet_timestamp": {
                 "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "expected_result_timestamp": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
                 "format": "uint64",
                 "minimum": 0.0
               },
@@ -245,7 +253,15 @@
                   "null"
                 ]
               },
-              "end_timestamp": {
+              "end_bet_timestamp": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "expected_result_timestamp": {
                 "type": [
                   "integer",
                   "null"
@@ -994,7 +1010,7 @@
       "required": [
         "cancelled",
         "description",
-        "end_timestamp",
+        "end_bet_timestamp",
         "options"
       ],
       "properties": {
@@ -1004,8 +1020,16 @@
         "description": {
           "type": "string"
         },
-        "end_timestamp": {
+        "end_bet_timestamp": {
           "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "expected_result_timestamp": {
+          "type": [
+            "integer",
+            "null"
+          ],
           "format": "uint64",
           "minimum": 0.0
         },
@@ -1047,7 +1071,7 @@
           "required": [
             "cancelled",
             "description",
-            "end_timestamp",
+            "end_bet_timestamp",
             "options"
           ],
           "properties": {
@@ -1057,8 +1081,16 @@
             "description": {
               "type": "string"
             },
-            "end_timestamp": {
+            "end_bet_timestamp": {
               "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "expected_result_timestamp": {
+              "type": [
+                "integer",
+                "null"
+              ],
               "format": "uint64",
               "minimum": 0.0
             },
@@ -1422,7 +1454,7 @@
       "required": [
         "cancelled",
         "description",
-        "end_timestamp",
+        "end_bet_timestamp",
         "options"
       ],
       "properties": {
@@ -1432,8 +1464,16 @@
         "description": {
           "type": "string"
         },
-        "end_timestamp": {
+        "end_bet_timestamp": {
           "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "expected_result_timestamp": {
+          "type": [
+            "integer",
+            "null"
+          ],
           "format": "uint64",
           "minimum": 0.0
         },
@@ -1475,7 +1515,7 @@
           "required": [
             "cancelled",
             "description",
-            "end_timestamp",
+            "end_bet_timestamp",
             "options"
           ],
           "properties": {
@@ -1485,8 +1525,16 @@
             "description": {
               "type": "string"
             },
-            "end_timestamp": {
+            "end_bet_timestamp": {
               "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "expected_result_timestamp": {
+              "type": [
+                "integer",
+                "null"
+              ],
               "format": "uint64",
               "minimum": 0.0
             },

@@ -80,15 +80,33 @@ pub fn execute(
         ExecuteMsg::CreateBet {
             description,
             img_url,
-            end_timestamp,
+            end_bet_timestamp,
+            expected_result_timestamp,
             options,
-        } => create_bet(deps, info, description, img_url, end_timestamp, options),
+        } => create_bet(
+            deps,
+            info,
+            description,
+            img_url,
+            end_bet_timestamp,
+            expected_result_timestamp,
+            options,
+        ),
         ExecuteMsg::ModifyBet {
             bet_id,
             description,
-            end_timestamp,
+            end_bet_timestamp,
+            expected_result_timestamp,
             img_url,
-        } => modify_bet(deps, info, bet_id, description, end_timestamp, img_url),
+        } => modify_bet(
+            deps,
+            info,
+            bet_id,
+            description,
+            end_bet_timestamp,
+            expected_result_timestamp,
+            img_url,
+        ),
         ExecuteMsg::CompleteBet {
             bet_id,
             result_option,
@@ -147,7 +165,7 @@ fn bet_on(
         .load(deps.storage, bet_id.u128())
         .map_err(|_| ContractError::BetNotFound {})?;
 
-    if env.block.time.seconds() > bet.end_timestamp {
+    if env.block.time.seconds() > bet.end_bet_timestamp {
         return Err(ContractError::BetAlreadyFinished {});
     }
 
@@ -412,7 +430,8 @@ fn create_bet(
     info: MessageInfo,
     description: String,
     img_url: Option<String>,
-    end_timestamp: u64,
+    end_bet_timestamp: u64,
+    expected_result_timestamp: Option<u64>,
     options: Vec<String>,
 ) -> Result<Response, ContractError> {
     assert_owner(deps.storage, &info.sender)?;
@@ -423,7 +442,8 @@ fn create_bet(
     let bet = Bet {
         description,
         img_url,
-        end_timestamp,
+        end_bet_timestamp,
+        expected_result_timestamp,
         options: options
             .iter()
             .map(|option| (option.clone(), Uint128::zero()))
@@ -444,7 +464,8 @@ fn modify_bet(
     info: MessageInfo,
     bet_id: Uint128,
     description: Option<String>,
-    end_timestamp: Option<u64>,
+    end_bet_timestamp: Option<u64>,
+    expected_result_timestamp: Option<u64>,
     img_url: Option<String>,
 ) -> Result<Response, ContractError> {
     assert_owner(deps.storage, &info.sender)?;
@@ -457,8 +478,12 @@ fn modify_bet(
         bet.description = description;
     }
 
-    if let Some(end_timestamp) = end_timestamp {
-        bet.end_timestamp = end_timestamp;
+    if let Some(end_bet_timestamp) = end_bet_timestamp {
+        bet.end_bet_timestamp = end_bet_timestamp;
+    }
+
+    if let Some(expected_result_timestamp) = expected_result_timestamp {
+        bet.expected_result_timestamp = Some(expected_result_timestamp);
     }
 
     if let Some(img_url) = img_url {

@@ -30,13 +30,15 @@ pub enum ExecuteMsg {
     CreateBet {
         description: String,
         img_url: Option<String>,
-        end_timestamp: u64,
+        end_bet_timestamp: u64,
+        expected_result_timestamp: Option<u64>,
         options: Vec<String>,
     },
     ModifyBet {
         bet_id: Uint128,
         description: Option<String>,
-        end_timestamp: Option<u64>,
+        end_bet_timestamp: Option<u64>,
+        expected_result_timestamp: Option<u64>,
         img_url: Option<String>,
     },
     CompleteBet {
