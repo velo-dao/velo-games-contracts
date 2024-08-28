@@ -49,7 +49,14 @@ pub struct Bet {
     pub img_url: Option<String>,
     pub end_bet_timestamp: u64,
     pub expected_result_timestamp: Option<u64>,
-    pub options: HashMap<String, Uint128>,
+    pub options: Vec<BetOption>,
+    pub current_bet_amounts: HashMap<String, Uint128>,
     pub result_option: Option<String>,
     pub cancelled: bool,
+}
+
+#[cw_serde]
+pub struct BetOption {
+    pub title: String,
+    pub img_url: Option<String>,
 }

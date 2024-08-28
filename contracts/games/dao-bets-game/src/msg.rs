@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_ownable::{cw_ownable_execute, cw_ownable_query};
-use dao_bets::dao_bets::{Bet, BetInfo, Config};
+use dao_bets::dao_bets::{Bet, BetInfo, BetOption, Config};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -32,7 +32,7 @@ pub enum ExecuteMsg {
         img_url: Option<String>,
         end_bet_timestamp: u64,
         expected_result_timestamp: Option<u64>,
-        options: Vec<String>,
+        options: Vec<BetOption>,
     },
     ModifyBet {
         bet_id: Uint128,

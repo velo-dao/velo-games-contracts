@@ -5,7 +5,7 @@ use cosmwasm_std::{
 use cw_ownable::{assert_owner, get_ownership, initialize_owner};
 use cw_storage_plus::Bound;
 use cw_utils::must_pay;
-use dao_bets::dao_bets::{Bet, BetInfo, ClaimInfo, Config};
+use dao_bets::dao_bets::{Bet, BetInfo, BetOption, ClaimInfo, Config};
 use general::users::ExecuteMsg::AddExperienceAndElo;
 
 use crate::{
@@ -192,7 +192,7 @@ fn bet_on(
     }
 
     let bet_total_amount = bet
-        .options
+        .current_bet_amounts
         .get_mut(&option)
         .ok_or(ContractError::InvalidOption {})?;
     bet_total_amount.checked_add(funds_sent)?;
@@ -251,7 +251,7 @@ fn collect_winnings(deps: DepsMut, info: MessageInfo) -> Result<Response, Contra
         bet_info_storage().remove(deps.storage, bet_info_key.clone())?;
 
         let claim_info_key = claim_info_key(bet_id.u128(), &info.sender);
-        let bet_amount = finished_bet.options.values().sum::<Uint128>();
+        let bet_amount = finished_bet.current_bet_amounts.values().sum::<Uint128>();
 
         // Hasn't won this round and it's not cancelled
         if finished_bet.result_option.unwrap_or_default() != game.option && !finished_bet.cancelled
@@ -262,7 +262,7 @@ fn collect_winnings(deps: DepsMut, info: MessageInfo) -> Result<Response, Contra
         let round_winnings = if finished_bet.cancelled {
             game.amount
         } else {
-            let total_won_shares = finished_bet.options.get(&game.option).unwrap();
+            let total_won_shares = finished_bet.current_bet_amounts.get(&game.option).unwrap();
             let user_won_shares = game.amount;
             bet_amount.multiply_ratio(user_won_shares, total_won_shares.u128())
         };
@@ -356,7 +356,7 @@ fn collect_winnings_bet(
     bet_info_storage().remove(deps.storage, bet_info_key.clone())?;
 
     let claim_info_key = claim_info_key(bet_id.u128(), &info.sender);
-    let bet_amount = finished_bet.options.values().sum::<Uint128>();
+    let bet_amount = finished_bet.current_bet_amounts.values().sum::<Uint128>();
 
     // Hasn't won this round and it's not cancelled
     if finished_bet.result_option.unwrap_or_default() != game.option && !finished_bet.cancelled {
@@ -366,7 +366,7 @@ fn collect_winnings_bet(
     let round_winnings = if finished_bet.cancelled {
         game.amount
     } else {
-        let total_won_shares = finished_bet.options.get(&game.option).unwrap();
+        let total_won_shares = finished_bet.current_bet_amounts.get(&game.option).unwrap();
         let user_won_shares = game.amount;
         bet_amount.multiply_ratio(user_won_shares, total_won_shares.u128())
     };
@@ -432,7 +432,7 @@ fn create_bet(
     img_url: Option<String>,
     end_bet_timestamp: u64,
     expected_result_timestamp: Option<u64>,
-    options: Vec<String>,
+    options: Vec<BetOption>,
 ) -> Result<Response, ContractError> {
     assert_owner(deps.storage, &info.sender)?;
 
@@ -444,9 +444,10 @@ fn create_bet(
         img_url,
         end_bet_timestamp,
         expected_result_timestamp,
-        options: options
+        options: options.clone(),
+        current_bet_amounts: options
             .iter()
-            .map(|option| (option.clone(), Uint128::zero()))
+            .map(|option| (option.title.clone(), Uint128::zero()))
             .collect(),
         result_option: None,
         cancelled: false,
@@ -673,7 +674,7 @@ fn query_my_pending_reward(deps: Deps, player: Addr) -> StdResult<Uint128> {
             None => continue,
         };
 
-        let bet_amount = finished_bet.options.values().sum::<Uint128>();
+        let bet_amount = finished_bet.current_bet_amounts.values().sum::<Uint128>();
 
         // Hasn't won this round and it's not cancelled
         if finished_bet.result_option.unwrap_or_default() != game.option && !finished_bet.cancelled
@@ -684,7 +685,7 @@ fn query_my_pending_reward(deps: Deps, player: Addr) -> StdResult<Uint128> {
         let round_winnings = if finished_bet.cancelled {
             game.amount
         } else {
-            let total_won_shares = finished_bet.options.get(&game.option).unwrap();
+            let total_won_shares = finished_bet.current_bet_amounts.get(&game.option).unwrap();
             let user_won_shares = game.amount;
             bet_amount.multiply_ratio(user_won_shares, total_won_shares.u128())
         };
@@ -711,7 +712,7 @@ fn query_my_pending_reward_rounds(
             None => continue,
         };
 
-        let bet_amount = finished_bet.options.values().sum::<Uint128>();
+        let bet_amount = finished_bet.current_bet_amounts.values().sum::<Uint128>();
 
         // Hasn't won this round and it's not cancelled
         if finished_bet.result_option.unwrap_or_default() != game.option && !finished_bet.cancelled
@@ -722,7 +723,7 @@ fn query_my_pending_reward_rounds(
         let round_winnings = if finished_bet.cancelled {
             game.amount
         } else {
-            let total_won_shares = finished_bet.options.get(&game.option).unwrap();
+            let total_won_shares = finished_bet.current_bet_amounts.get(&game.option).unwrap();
             let user_won_shares = game.amount;
             bet_amount.multiply_ratio(user_won_shares, total_won_shares.u128())
         };
@@ -751,7 +752,7 @@ fn query_my_pending_reward_round(
 
     let game = bet_info_storage().load(deps.storage, bet_info_key)?;
 
-    let bet_amount = finished_bet.options.values().sum::<Uint128>();
+    let bet_amount = finished_bet.current_bet_amounts.values().sum::<Uint128>();
 
     // Hasn't won this round and it's not cancelled
     if finished_bet.result_option.unwrap_or_default() != game.option && !finished_bet.cancelled {
@@ -761,7 +762,7 @@ fn query_my_pending_reward_round(
     let round_winnings = if finished_bet.cancelled {
         game.amount
     } else {
-        let total_won_shares = finished_bet.options.get(&game.option).unwrap();
+        let total_won_shares = finished_bet.current_bet_amounts.get(&game.option).unwrap();
         let user_won_shares = game.amount;
         bet_amount.multiply_ratio(user_won_shares, total_won_shares.u128())
     };
