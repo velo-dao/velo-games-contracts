@@ -45,6 +45,7 @@ pub struct ClaimInfo {
 
 #[cw_serde]
 pub struct Bet {
+    pub topic: String,
     pub description: String,
     pub img_url: Option<String>,
     pub end_bet_timestamp: u64,

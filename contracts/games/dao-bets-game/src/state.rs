@@ -26,9 +26,38 @@ impl TopKey {
 pub const CONFIG: Item<Config> = Item::new(TopKey::Config.as_str());
 pub const NEXT_BET_ID: Item<u128> = Item::new(TopKey::NextBetId.as_str());
 // Bets where result wasn't submitted by the DAO yet
-pub const UNFINISHED_BETS: Map<u128, Bet> = Map::new(TopKey::UnfinishedBets.as_str());
-// Bets where result was submitted by the DAO
-pub const FINISHED_BETS: Map<u128, Bet> = Map::new(TopKey::FinishedBets.as_str());
+pub struct BetIndexes<'a> {
+    pub topic: MultiIndex<'a, String, Bet, u128>,
+}
+
+impl<'a> IndexList<Bet> for BetIndexes<'a> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Bet>> + '_> {
+        let v: Vec<&dyn Index<Bet>> = vec![&self.topic];
+        Box::new(v.into_iter())
+    }
+}
+
+pub const UNFINISHED_BETS: IndexedMap<u128, Bet, BetIndexes> = IndexedMap::new(
+    TopKey::UnfinishedBets.as_str(),
+    BetIndexes {
+        topic: MultiIndex::new(
+            |_pk, bet| bet.topic.clone(),
+            TopKey::UnfinishedBets.as_str(),
+            "unfinished_bet__topic",
+        ),
+    },
+);
+
+pub const FINISHED_BETS: IndexedMap<u128, Bet, BetIndexes> = IndexedMap::new(
+    TopKey::FinishedBets.as_str(),
+    BetIndexes {
+        topic: MultiIndex::new(
+            |_pk, bet| bet.topic.clone(),
+            TopKey::FinishedBets.as_str(),
+            "finished_bet__topic",
+        ),
+    },
+);
 
 pub const TOTALS_SPENT: Map<Addr, Uint128> = Map::new(TopKey::TotalsSpent.as_str());
 

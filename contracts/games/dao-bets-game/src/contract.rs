@@ -78,6 +78,7 @@ pub fn execute(
         ExecuteMsg::CollectWinnings {} => collect_winnings(deps, info),
         ExecuteMsg::CollectionWinningBet { bet_id } => collect_winnings_bet(deps, info, bet_id),
         ExecuteMsg::CreateBet {
+            topic,
             description,
             img_url,
             end_bet_timestamp,
@@ -86,6 +87,7 @@ pub fn execute(
         } => create_bet(
             deps,
             info,
+            topic,
             description,
             img_url,
             end_bet_timestamp,
@@ -94,6 +96,7 @@ pub fn execute(
         ),
         ExecuteMsg::ModifyBet {
             bet_id,
+            topic,
             description,
             end_bet_timestamp,
             expected_result_timestamp,
@@ -102,6 +105,7 @@ pub fn execute(
             deps,
             info,
             bet_id,
+            topic,
             description,
             end_bet_timestamp,
             expected_result_timestamp,
@@ -425,9 +429,11 @@ fn collect_winnings_bet(
         .add_attribute("amount", amount_winnings.to_string()))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn create_bet(
     deps: DepsMut,
     info: MessageInfo,
+    topic: String,
     description: String,
     img_url: Option<String>,
     end_bet_timestamp: u64,
@@ -440,6 +446,7 @@ fn create_bet(
     NEXT_BET_ID.save(deps.storage, &(bet_id + 1))?;
 
     let bet = Bet {
+        topic,
         description,
         img_url,
         end_bet_timestamp,
@@ -460,10 +467,12 @@ fn create_bet(
         .add_attribute("bet_id", bet_id.to_string()))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn modify_bet(
     deps: DepsMut,
     info: MessageInfo,
     bet_id: Uint128,
+    topic: Option<String>,
     description: Option<String>,
     end_bet_timestamp: Option<u64>,
     expected_result_timestamp: Option<u64>,
@@ -474,6 +483,10 @@ fn modify_bet(
     let mut bet = UNFINISHED_BETS
         .load(deps.storage, bet_id.u128())
         .map_err(|_| ContractError::BetNotFound {})?;
+
+    if let Some(topic) = topic {
+        bet.topic = topic;
+    }
 
     if let Some(description) = description {
         bet.description = description;
@@ -513,7 +526,7 @@ fn complete_bet(
     bet.result_option = Some(result_option.clone());
 
     FINISHED_BETS.save(deps.storage, bet_id.u128(), &bet)?;
-    UNFINISHED_BETS.remove(deps.storage, bet_id.u128());
+    UNFINISHED_BETS.remove(deps.storage, bet_id.u128())?;
 
     Ok(Response::new()
         .add_attribute("action", "complete-bet")
@@ -535,7 +548,7 @@ fn cancel_bet(
     bet.cancelled = true;
 
     FINISHED_BETS.save(deps.storage, bet_id.u128(), &bet)?;
-    UNFINISHED_BETS.remove(deps.storage, bet_id.u128());
+    UNFINISHED_BETS.remove(deps.storage, bet_id.u128())?;
 
     Ok(Response::new()
         .add_attribute("action", "cancel-bet")
@@ -592,6 +605,26 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             limit,
         } => to_json_binary(&query_claim_info_by_user(deps, player, start_after, limit)?),
         QueryMsg::TotalSpent { player } => to_json_binary(&query_total_spent(deps, player)?),
+        QueryMsg::UnfinishedBetsByTopic {
+            topic,
+            start_after,
+            limit,
+        } => to_json_binary(&query_unfinished_bets_by_topic(
+            deps,
+            topic,
+            start_after,
+            limit,
+        )?),
+        QueryMsg::FinishedBetsByTopic {
+            topic,
+            start_after,
+            limit,
+        } => to_json_binary(&query_finished_bets_by_topic(
+            deps,
+            topic,
+            start_after,
+            limit,
+        )?),
     }
 }
 
@@ -654,6 +687,48 @@ fn query_unfinished_bets(
     let start = start_after.map(|bet_id| Bound::exclusive(bet_id.u128()));
 
     let bets = UNFINISHED_BETS
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit as usize)
+        .map(|res| res.map(|item| item.1))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(bets)
+}
+
+fn query_unfinished_bets_by_topic(
+    deps: Deps,
+    topic: String,
+    start_after: Option<Uint128>,
+    limit: Option<u32>,
+) -> StdResult<Vec<Bet>> {
+    let limit = limit.unwrap_or(MAX_PAGE_LIMIT).min(MAX_PAGE_LIMIT);
+    let start = start_after.map(|bet_id| Bound::exclusive(bet_id.u128()));
+
+    let bets = UNFINISHED_BETS
+        .idx
+        .topic
+        .prefix(topic)
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit as usize)
+        .map(|res| res.map(|item| item.1))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(bets)
+}
+
+fn query_finished_bets_by_topic(
+    deps: Deps,
+    topic: String,
+    start_after: Option<Uint128>,
+    limit: Option<u32>,
+) -> StdResult<Vec<Bet>> {
+    let limit = limit.unwrap_or(MAX_PAGE_LIMIT).min(MAX_PAGE_LIMIT);
+    let start = start_after.map(|bet_id| Bound::exclusive(bet_id.u128()));
+
+    let bets = FINISHED_BETS
+        .idx
+        .topic
+        .prefix(topic)
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit as usize)
         .map(|res| res.map(|item| item.1))

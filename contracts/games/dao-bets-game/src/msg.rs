@@ -28,6 +28,7 @@ pub enum ExecuteMsg {
     },
     // Owner actions
     CreateBet {
+        topic: String,
         description: String,
         img_url: Option<String>,
         end_bet_timestamp: u64,
@@ -36,6 +37,7 @@ pub enum ExecuteMsg {
     },
     ModifyBet {
         bet_id: Uint128,
+        topic: Option<String>,
         description: Option<String>,
         end_bet_timestamp: Option<u64>,
         expected_result_timestamp: Option<u64>,
@@ -74,6 +76,18 @@ pub enum QueryMsg {
     },
     #[returns(Vec<Bet>)]
     FinishedBets {
+        start_after: Option<Uint128>,
+        limit: Option<u32>,
+    },
+    #[returns(Vec<Bet>)]
+    UnfinishedBetsByTopic {
+        topic: String,
+        start_after: Option<Uint128>,
+        limit: Option<u32>,
+    },
+    #[returns(Vec<Bet>)]
+    FinishedBetsByTopic {
+        topic: String,
         start_after: Option<Uint128>,
         limit: Option<u32>,
     },
