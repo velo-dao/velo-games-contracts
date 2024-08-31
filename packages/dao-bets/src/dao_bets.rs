@@ -45,6 +45,7 @@ pub struct ClaimInfo {
 
 #[cw_serde]
 pub struct Bet {
+    pub bet_id: u128,
     pub topic: String,
     pub description: String,
     pub img_url: Option<String>,

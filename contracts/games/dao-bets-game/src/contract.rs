@@ -446,6 +446,7 @@ fn create_bet(
     NEXT_BET_ID.save(deps.storage, &(bet_id + 1))?;
 
     let bet = Bet {
+        bet_id,
         topic,
         description,
         img_url,

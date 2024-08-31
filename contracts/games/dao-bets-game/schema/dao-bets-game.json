@@ -1114,6 +1114,7 @@
       "title": "Bet",
       "type": "object",
       "required": [
+        "bet_id",
         "cancelled",
         "current_bet_amounts",
         "description",
@@ -1122,6 +1123,11 @@
         "topic"
       ],
       "properties": {
+        "bet_id": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
         "cancelled": {
           "type": "boolean"
         },
@@ -1204,6 +1210,7 @@
         "Bet": {
           "type": "object",
           "required": [
+            "bet_id",
             "cancelled",
             "current_bet_amounts",
             "description",
@@ -1212,6 +1219,11 @@
             "topic"
           ],
           "properties": {
+            "bet_id": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
             "cancelled": {
               "type": "boolean"
             },
@@ -1294,6 +1306,7 @@
         "Bet": {
           "type": "object",
           "required": [
+            "bet_id",
             "cancelled",
             "current_bet_amounts",
             "description",
@@ -1302,6 +1315,11 @@
             "topic"
           ],
           "properties": {
+            "bet_id": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
             "cancelled": {
               "type": "boolean"
             },
@@ -1706,6 +1724,7 @@
       "title": "Bet",
       "type": "object",
       "required": [
+        "bet_id",
         "cancelled",
         "current_bet_amounts",
         "description",
@@ -1714,6 +1733,11 @@
         "topic"
       ],
       "properties": {
+        "bet_id": {
+          "type": "integer",
+          "format": "uint128",
+          "minimum": 0.0
+        },
         "cancelled": {
           "type": "boolean"
         },
@@ -1796,6 +1820,7 @@
         "Bet": {
           "type": "object",
           "required": [
+            "bet_id",
             "cancelled",
             "current_bet_amounts",
             "description",
@@ -1804,6 +1829,11 @@
             "topic"
           ],
           "properties": {
+            "bet_id": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
             "cancelled": {
               "type": "boolean"
             },
@@ -1886,6 +1916,7 @@
         "Bet": {
           "type": "object",
           "required": [
+            "bet_id",
             "cancelled",
             "current_bet_amounts",
             "description",
@@ -1894,6 +1925,11 @@
             "topic"
           ],
           "properties": {
+            "bet_id": {
+              "type": "integer",
+              "format": "uint128",
+              "minimum": 0.0
+            },
             "cancelled": {
               "type": "boolean"
             },
