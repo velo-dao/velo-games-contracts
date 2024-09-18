@@ -117,6 +117,8 @@ pub enum QueryMsg {
     },
     #[returns(Uint128)]
     TotalSpent { player: Addr },
+    #[returns(Uint128)]
+    TotalBets {},
 }
 
 #[cw_serde]

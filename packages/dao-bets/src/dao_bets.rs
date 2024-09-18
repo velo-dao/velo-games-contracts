@@ -55,6 +55,7 @@ pub struct Bet {
     pub current_bet_amounts: HashMap<String, Uint128>,
     pub result_option: Option<String>,
     pub cancelled: bool,
+    pub num_players: u64,
 }
 
 #[cw_serde]

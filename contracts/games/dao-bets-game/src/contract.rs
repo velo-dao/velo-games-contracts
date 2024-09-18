@@ -193,6 +193,8 @@ fn bet_on(
             return Err(ContractError::CantIncreaseBetOnDifferentOption {});
         }
         amount_bet += bet_info.amount;
+    } else {
+        bet.num_players += 1;
     }
 
     let bet_total_amount = bet
@@ -459,6 +461,7 @@ fn create_bet(
             .collect(),
         result_option: None,
         cancelled: false,
+        num_players: 0,
     };
 
     UNFINISHED_BETS.save(deps.storage, bet_id, &bet)?;
@@ -626,6 +629,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
+        QueryMsg::TotalBets {} => to_json_binary(&query_total_bets(deps)?),
     }
 }
 
@@ -924,6 +928,10 @@ fn query_total_spent(deps: Deps, player: Addr) -> StdResult<Uint128> {
     Ok(TOTALS_SPENT
         .may_load(deps.storage, player)?
         .unwrap_or_default())
+}
+
+fn query_total_bets(deps: Deps) -> StdResult<Uint128> {
+    Ok(Uint128::from(NEXT_BET_ID.load(deps.storage)? - 1))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
