@@ -1442,7 +1442,7 @@ dependencies = [
 
 [[package]]
 name = "users"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "censor",
  "cosmwasm-schema",

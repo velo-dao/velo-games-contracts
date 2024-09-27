@@ -39,6 +39,9 @@ pub enum ContractError {
     #[error("Profanity filter didn't allow {}", text)]
     ProfanityFilter { text: String },
 
+    #[error("Can only use alphanumeric characters")]
+    AlphanumericOnly {},
+
     #[error("Username already exists")]
     UsernameAlreadyExists {},
 

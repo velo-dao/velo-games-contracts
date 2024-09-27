@@ -399,12 +399,18 @@ fn validate_user(
                 None => return Err(ContractError::UsernameAlreadyExists {}),
             }
         }
+
         if !(3..=16).contains(&(username.len() as u64)) {
             return Err(ContractError::InvalidLength {
                 text: username.to_owned(),
                 min: 3,
                 max: 16,
             });
+        }
+
+        // Check that username only contains alphanumeric characters
+        if !username.chars().all(char::is_alphanumeric) {
+            return Err(ContractError::AlphanumericOnly {});
         }
 
         if censor.check(username.as_str()) {
@@ -423,6 +429,11 @@ fn validate_user(
                 min: 3,
                 max: 16,
             });
+        }
+
+        // Check that display name only contains alphanumeric characters
+        if !display_name.chars().all(char::is_alphanumeric) {
+            return Err(ContractError::AlphanumericOnly {});
         }
 
         if censor.check(display_name.as_str()) {
