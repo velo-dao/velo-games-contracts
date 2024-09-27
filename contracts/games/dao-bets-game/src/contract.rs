@@ -585,6 +585,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::MyPendingRewardRounds { player } => {
             to_json_binary(&query_my_pending_reward_rounds(deps, player)?)
         }
+        QueryMsg::MyPendingRewardRoundsByTopic { player, topic } => to_json_binary(
+            &query_my_pending_reward_rounds_by_topic(deps, player, topic)?,
+        ),
         QueryMsg::MyPendingRewardRound { round_id, player } => {
             to_json_binary(&query_my_pending_reward_round(deps, round_id, player)?)
         }
@@ -791,6 +794,54 @@ fn query_my_pending_reward_rounds(
             Some(finished_bet) => finished_bet,
             None => continue,
         };
+
+        let bet_amount = finished_bet.current_bet_amounts.values().sum::<Uint128>();
+
+        // Hasn't won this round and it's not cancelled
+        if finished_bet.result_option.unwrap_or_default() != game.option && !finished_bet.cancelled
+        {
+            continue;
+        }
+
+        let round_winnings = if finished_bet.cancelled {
+            game.amount
+        } else {
+            let total_won_shares = finished_bet.current_bet_amounts.get(&game.option).unwrap();
+            let user_won_shares = game.amount;
+            bet_amount.multiply_ratio(user_won_shares, total_won_shares.u128())
+        };
+
+        pending_reward_total += round_winnings;
+        pending_reward_rounds.push((bet_id, round_winnings));
+    }
+
+    Ok(PendingRewardRoundsResponse {
+        pending_reward_rounds,
+        pending_reward_total,
+    })
+}
+
+fn query_my_pending_reward_rounds_by_topic(
+    deps: Deps,
+    player: Addr,
+    topic: String,
+) -> StdResult<PendingRewardRoundsResponse> {
+    let my_bets_list = query_my_games_without_limit(deps, player)?;
+
+    let mut pending_reward_rounds = Vec::new();
+    let mut pending_reward_total = Uint128::zero();
+    for game in my_bets_list.my_bets_list {
+        let bet_id = game.bet_id;
+
+        let finished_bet = match FINISHED_BETS.may_load(deps.storage, bet_id.u128())? {
+            Some(finished_bet) => finished_bet,
+            None => continue,
+        };
+
+        // Not this topic
+        if finished_bet.topic != topic {
+            continue;
+        }
 
         let bet_amount = finished_bet.current_bet_amounts.values().sum::<Uint128>();
 
