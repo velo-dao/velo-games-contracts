@@ -47,4 +47,13 @@ pub enum ContractError {
 
     #[error("At least one admin must remain")]
     NeedOneAdmin {},
+
+    #[error("Event already exists")]
+    EventAlreadyExists {},
+
+    #[error("Event end time must be after start time")]
+    EventEndTimeBeforeStartTime {},
+
+    #[error("Cannot create an event that already finished")]
+    EventAlreadyFinished {},
 }

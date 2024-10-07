@@ -1,6 +1,6 @@
 {
   "contract_name": "users",
-  "contract_version": "0.1.4",
+  "contract_version": "0.1.5",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -282,6 +282,73 @@
             ],
             "properties": {
               "old_admin": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "add_event"
+        ],
+        "properties": {
+          "add_event": {
+            "type": "object",
+            "required": [
+              "end_timestamp",
+              "event_name",
+              "start_timestamp"
+            ],
+            "properties": {
+              "end_timestamp": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "event_name": {
+                "type": "string"
+              },
+              "games": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "$ref": "#/definitions/Addr"
+                }
+              },
+              "start_timestamp": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "add_game_to_event"
+        ],
+        "properties": {
+          "add_game_to_event": {
+            "type": "object",
+            "required": [
+              "event_name",
+              "game_address"
+            ],
+            "properties": {
+              "event_name": {
+                "type": "string"
+              },
+              "game_address": {
                 "$ref": "#/definitions/Addr"
               }
             },
@@ -643,6 +710,89 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "ongoing_events"
+        ],
+        "properties": {
+          "ongoing_events": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "finished_events"
+        ],
+        "properties": {
+          "finished_events": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "start_after": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "participated"
+        ],
+        "properties": {
+          "participated": {
+            "type": "object",
+            "required": [
+              "event_name",
+              "user"
+            ],
+            "properties": {
+              "event_name": {
+                "type": "string"
+              },
+              "user": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ],
     "definitions": {
@@ -696,7 +846,106 @@
       },
       "additionalProperties": false
     },
+    "finished_events": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_EventInfo",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/EventInfo"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "EventInfo": {
+          "type": "object",
+          "required": [
+            "end_timestamp",
+            "name",
+            "start_timestamp"
+          ],
+          "properties": {
+            "end_timestamp": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "games": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "name": {
+              "type": "string"
+            },
+            "start_timestamp": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
     "game_registered": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Boolean",
+      "type": "boolean"
+    },
+    "ongoing_events": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_EventInfo",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/EventInfo"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "EventInfo": {
+          "type": "object",
+          "required": [
+            "end_timestamp",
+            "name",
+            "start_timestamp"
+          ],
+          "properties": {
+            "end_timestamp": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "games": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "name": {
+              "type": "string"
+            },
+            "start_timestamp": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "participated": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Boolean",
       "type": "boolean"

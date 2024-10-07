@@ -6,11 +6,16 @@ use cosmwasm_std::{
 use cosmwasm_std::{Addr, Binary, Deps, StdResult};
 use cw2::set_contract_version;
 use cw_storage_plus::Bound;
-use general::users::{Config, Elo, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, User};
+use general::users::{
+    Config, Elo, EventInfo, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, User,
+};
 use url::Url;
 
 use crate::error::ContractError;
-use crate::state::{ADDRESS_TO_USER, ADMINS, CONFIG, GAME_CONTRACTS, NUM_USERS, USERNAME_TO_USER};
+use crate::state::{
+    ADDRESS_TO_USER, ADMINS, CONFIG, FINISHED_EVENTS, GAME_CONTRACTS, NUM_USERS, ONGOING_EVENTS,
+    PARTICIPATED_EVENTS, USERNAME_TO_USER,
+};
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -66,9 +71,27 @@ pub fn execute(
             user,
             experience,
             elo,
-        } => add_experience_and_elo(deps, info, user, experience, elo),
+        } => add_experience_and_elo(deps, info, env, user, experience, elo),
         ExecuteMsg::AddAdmin { new_admin } => add_admin(deps, info, new_admin),
         ExecuteMsg::RemoveAdmin { old_admin } => remove_admin(deps, info, old_admin),
+        ExecuteMsg::AddEvent {
+            event_name,
+            start_timestamp,
+            end_timestamp,
+            games,
+        } => add_event(
+            deps,
+            info,
+            env,
+            event_name,
+            start_timestamp,
+            end_timestamp,
+            games,
+        ),
+        ExecuteMsg::AddGameToEvent {
+            event_name,
+            game_address,
+        } => add_game_to_event(deps, info, event_name, game_address),
     }
 }
 
@@ -213,6 +236,7 @@ fn reset_elo(
 fn add_experience_and_elo(
     deps: DepsMut,
     info: MessageInfo,
+    env: Env,
     user: Addr,
     experience: u64,
     elo: Option<Elo>,
@@ -263,6 +287,34 @@ fn add_experience_and_elo(
 
     ADDRESS_TO_USER.save(deps.storage, user.to_owned(), &updated_user)?;
 
+    // Get all events that are ongoing
+    let ongoing_events: Vec<EventInfo> = ONGOING_EVENTS
+        .range(deps.storage, None, None, Order::Ascending)
+        .filter_map(|v| v.ok())
+        .map(|(_, event)| event)
+        .collect();
+
+    for event in ongoing_events {
+        // If this event is already finished, move it to finished events
+        if env.block.time.seconds() >= event.end_timestamp {
+            ONGOING_EVENTS.remove(deps.storage, event.name.clone());
+            FINISHED_EVENTS.save(deps.storage, event.name.clone(), &event)?;
+            continue;
+        }
+        // If it's not finished yet, check that the game is part of this event
+        if let Some(games) = event.games {
+            if !games.contains(&info.sender) {
+                continue;
+            }
+        }
+
+        PARTICIPATED_EVENTS.save(
+            deps.storage,
+            (user.to_owned(), event.name.clone()),
+            &Empty {},
+        )?;
+    }
+
     Ok(Response::new()
         .add_attribute("action", "modify_experience_and_elo")
         .add_attribute("game_contract", info.sender)
@@ -300,6 +352,68 @@ fn remove_admin(
     Ok(Response::new().add_attribute("remove_admin", old_admin.to_string()))
 }
 
+fn add_event(
+    deps: DepsMut,
+    info: MessageInfo,
+    env: Env,
+    event_name: String,
+    start_timestamp: u64,
+    end_timestamp: u64,
+    games: Option<Vec<Addr>>,
+) -> Result<Response, ContractError> {
+    assert_is_admin(deps.as_ref(), info)?;
+
+    if ONGOING_EVENTS.has(deps.storage, event_name.clone()) {
+        return Err(ContractError::EventAlreadyExists {});
+    }
+
+    if start_timestamp >= end_timestamp {
+        return Err(ContractError::EventEndTimeBeforeStartTime {});
+    }
+
+    if env.block.time.seconds() >= end_timestamp {
+        return Err(ContractError::EventAlreadyFinished {});
+    }
+
+    let event = EventInfo {
+        name: event_name.clone(),
+        start_timestamp,
+        end_timestamp,
+        games,
+    };
+
+    ONGOING_EVENTS.save(deps.storage, event_name.clone(), &event)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "add_event")
+        .add_attribute("event_name", event_name))
+}
+
+fn add_game_to_event(
+    deps: DepsMut,
+    info: MessageInfo,
+    event_name: String,
+    game_address: Addr,
+) -> Result<Response, ContractError> {
+    assert_is_admin(deps.as_ref(), info)?;
+
+    let mut event = ONGOING_EVENTS.load(deps.storage, event_name.clone())?;
+
+    event.games = event
+        .games
+        .map_or(Some(vec![game_address.clone()]), |mut games| {
+            games.push(game_address.clone());
+            Some(games)
+        });
+
+    ONGOING_EVENTS.save(deps.storage, event_name.clone(), &event)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "add_game_to_event")
+        .add_attribute("event_name", event_name)
+        .add_attribute("game_address", game_address))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -318,6 +432,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_json_binary(&query_users(deps, start_after, limit))
         }
         QueryMsg::Admins {} => to_json_binary(&query_admins(deps)?),
+        QueryMsg::OngoingEvents { start_after, limit } => {
+            to_json_binary(&query_ongoing_events(deps, start_after, limit))
+        }
+        QueryMsg::FinishedEvents { start_after, limit } => {
+            to_json_binary(&query_finished_events(deps, start_after, limit))
+        }
+        QueryMsg::Participated { user, event_name } => {
+            to_json_binary(&query_participated(deps, user, event_name))
+        }
     }
 }
 
@@ -361,6 +484,44 @@ fn query_game_registered(deps: Deps, game_address: Addr) -> StdResult<bool> {
 fn query_admins(deps: Deps) -> StdResult<Vec<Addr>> {
     let admins = ADMINS.load(deps.storage)?;
     Ok(admins)
+}
+
+fn query_ongoing_events(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> Vec<EventInfo> {
+    let limit = limit.unwrap_or(DEFAULT_MAX_LIMIT).min(DEFAULT_MAX_LIMIT);
+    let start = start_after.map(Bound::exclusive);
+    let events: Vec<EventInfo> = ONGOING_EVENTS
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit as usize)
+        .filter_map(Result::ok)
+        .map(|(_, event)| event)
+        .collect();
+
+    events
+}
+
+fn query_finished_events(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> Vec<EventInfo> {
+    let limit = limit.unwrap_or(DEFAULT_MAX_LIMIT).min(DEFAULT_MAX_LIMIT);
+    let start = start_after.map(Bound::exclusive);
+    let events: Vec<EventInfo> = FINISHED_EVENTS
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit as usize)
+        .filter_map(Result::ok)
+        .map(|(_, event)| event)
+        .collect();
+
+    events
+}
+
+fn query_participated(deps: Deps, user: Addr, event_name: String) -> bool {
+    PARTICIPATED_EVENTS.has(deps.storage, (user, event_name))
 }
 
 // Helpers

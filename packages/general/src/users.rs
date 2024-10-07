@@ -43,6 +43,16 @@ pub enum ExecuteMsg {
     RemoveAdmin {
         old_admin: Addr,
     },
+    AddEvent {
+        event_name: String,
+        start_timestamp: u64,
+        end_timestamp: u64,
+        games: Option<Vec<Addr>>,
+    },
+    AddGameToEvent {
+        event_name: String,
+        game_address: Addr,
+    },
 }
 
 #[cw_serde]
@@ -108,7 +118,32 @@ pub enum QueryMsg {
     },
     #[returns(Vec<Addr>)]
     Admins {},
+    #[returns(Vec<EventInfo>)]
+    OngoingEvents {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    #[returns(Vec<EventInfo>)]
+    FinishedEvents {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    #[returns(bool)]
+    Participated { user: Addr, event_name: String },
 }
 
 #[cw_serde]
 pub struct MigrateMsg {}
+
+#[cw_serde]
+pub struct EventInfo {
+    pub name: String,
+    pub start_timestamp: u64,
+    pub end_timestamp: u64,
+    pub games: Option<Vec<Addr>>,
+}
+
+#[cw_serde]
+pub enum Activity {
+    Participated,
+}

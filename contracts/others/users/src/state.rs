@@ -1,6 +1,6 @@
 use cosmwasm_std::{Addr, Empty};
 use cw_storage_plus::{Item, Map};
-use general::users::{Config, User};
+use general::users::{Config, EventInfo, User};
 
 /// Top level storage key. Values must not conflict.
 /// Each key is only one byte long to ensure we use the smallest possible storage keys.
@@ -10,9 +10,12 @@ pub enum TopKey {
     Config = b'b',
     AddressToUser = b'c',
     UsernameToUser = b'd',
-    //Contracts allowed to modify users info
+    // Contracts allowed to modify users info
     GameContracts = b'e',
     Admins = b'f',
+    OngoingEvents = b'g',
+    FinishedEvents = b'h',
+    ParticipatedEvents = b'i',
 }
 
 impl TopKey {
@@ -31,3 +34,7 @@ pub const USERNAME_TO_USER: Map<String, User> = Map::new(TopKey::UsernameToUser.
 pub const GAME_CONTRACTS: Map<Addr, Empty> = Map::new(TopKey::GameContracts.as_str());
 pub const CONFIG: Item<Config> = Item::new(TopKey::Config.as_str());
 pub const ADMINS: Item<Vec<Addr>> = Item::new(TopKey::Admins.as_str());
+pub const ONGOING_EVENTS: Map<String, EventInfo> = Map::new(TopKey::OngoingEvents.as_str());
+pub const FINISHED_EVENTS: Map<String, EventInfo> = Map::new(TopKey::FinishedEvents.as_str());
+pub const PARTICIPATED_EVENTS: Map<(Addr, String), Empty> =
+    Map::new(TopKey::ParticipatedEvents.as_str());
