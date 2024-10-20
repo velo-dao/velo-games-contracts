@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-bets-game",
-  "contract_version": "0.1.5",
+  "contract_version": "0.1.6",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -226,6 +226,12 @@
                 "items": {
                   "$ref": "#/definitions/BetOption"
                 }
+              },
+              "rules": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "topic": {
                 "type": "string"
@@ -1249,6 +1255,12 @@
             "null"
           ]
         },
+        "rules": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "topic": {
           "type": "string"
         }
@@ -1351,6 +1363,12 @@
                 "null"
               ]
             },
+            "rules": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "topic": {
               "type": "string"
             }
@@ -1448,6 +1466,12 @@
               }
             },
             "result_option": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rules": {
               "type": [
                 "string",
                 "null"
@@ -1920,6 +1944,12 @@
             "null"
           ]
         },
+        "rules": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "topic": {
           "type": "string"
         }
@@ -2022,6 +2052,12 @@
                 "null"
               ]
             },
+            "rules": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "topic": {
               "type": "string"
             }
@@ -2119,6 +2155,12 @@
               }
             },
             "result_option": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "rules": {
               "type": [
                 "string",
                 "null"

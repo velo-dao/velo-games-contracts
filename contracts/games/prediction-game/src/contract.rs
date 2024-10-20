@@ -94,7 +94,7 @@ pub fn instantiate(
 
     ROUND_DENOMS.save(deps.storage, &bet_token_denoms)?;
 
-    Ok(Response::new().add_attribute("method", "instantiate_prediction_game"))
+    Ok(Response::new().add_attribute("velo_method", "instantiate_prediction_game"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -278,8 +278,8 @@ fn execute_collect_winnings(deps: DepsMut, info: MessageInfo) -> Result<Response
         resp = resp
             .add_messages(messages_dev_fees)
             .add_message(wasm_message)
-            .add_attribute("action", "distribute-dev-rewards")
-            .add_attribute("amount", dev_fee);
+            .add_attribute("velo_action", "distribute-dev-rewards")
+            .add_attribute("velo_amount", dev_fee);
     }
 
     let amount_winnings = winnings.u128() - dev_fee.u128();
@@ -290,9 +290,9 @@ fn execute_collect_winnings(deps: DepsMut, info: MessageInfo) -> Result<Response
 
     Ok(resp
         .add_message(msg_send_winnings)
-        .add_attribute("action", "collect-winnings")
-        .add_attribute("claimer", info.sender)
-        .add_attribute("amount", amount_winnings.to_string()))
+        .add_attribute("velo_action", "collect-winnings")
+        .add_attribute("velo_claimer", info.sender)
+        .add_attribute("velo_amount", amount_winnings.to_string()))
 }
 
 fn execute_collect_winning_round(
@@ -419,8 +419,8 @@ fn execute_collect_winning_round(
         resp = resp
             .add_messages(messages_dev_fees)
             .add_message(wasm_message)
-            .add_attribute("action", "distribute-dev-rewards")
-            .add_attribute("amount", dev_fee);
+            .add_attribute("velo_action", "distribute-dev-rewards")
+            .add_attribute("velo_amount", dev_fee);
     }
 
     let amount_winnings = winnings.u128() - dev_fee.u128();
@@ -431,10 +431,10 @@ fn execute_collect_winning_round(
 
     Ok(resp
         .add_message(msg_send_winnings)
-        .add_attribute("action", "collect-winnings-round")
-        .add_attribute("round_id", round_id)
-        .add_attribute("claimer", info.sender)
-        .add_attribute("amount", amount_winnings.to_string()))
+        .add_attribute("velo_action", "collect-winnings-round")
+        .add_attribute("velo_round_id", round_id)
+        .add_attribute("velo_claimer", info.sender)
+        .add_attribute("velo_amount", amount_winnings.to_string()))
 }
 
 fn execute_bet(
@@ -522,12 +522,12 @@ fn execute_bet(
             bet_round.bull_amount += gross;
             NEXT_ROUND.save(deps.storage, &bet_round)?;
             resp = resp
-                .add_attribute("action", "bet".to_string())
-                .add_attribute("round", round_id.to_string())
-                .add_attribute("direction", "bull".to_string())
-                .add_attribute("amount", gross.to_string())
-                .add_attribute("round_bear_total", bet_round.bear_amount.to_string())
-                .add_attribute("account", info.sender.to_string());
+                .add_attribute("velo_action", "bet".to_string())
+                .add_attribute("velo_round", round_id.to_string())
+                .add_attribute("velo_direction", "bull".to_string())
+                .add_attribute("velo_amount", gross.to_string())
+                .add_attribute("velo_round_bull_total", bet_round.bull_amount.to_string())
+                .add_attribute("velo_account", info.sender.to_string());
         }
         Direction::Bear => {
             bet_info_storage().save(
@@ -543,12 +543,12 @@ fn execute_bet(
             bet_round.bear_amount += gross;
             NEXT_ROUND.save(deps.storage, &bet_round)?;
             resp = resp
-                .add_attribute("action", "bet".to_string())
-                .add_attribute("round", round_id.to_string())
-                .add_attribute("direction", "bear".to_string())
-                .add_attribute("amount", gross.to_string())
-                .add_attribute("round_bear_total", bet_round.bear_amount.to_string())
-                .add_attribute("account", info.sender.to_string());
+                .add_attribute("velo_action", "bet".to_string())
+                .add_attribute("velo_round", round_id.to_string())
+                .add_attribute("velo_direction", "bear".to_string())
+                .add_attribute("velo_amount", gross.to_string())
+                .add_attribute("velo_round_bear_total", bet_round.bear_amount.to_string())
+                .add_attribute("velo_account", info.sender.to_string());
         }
     }
 
@@ -569,9 +569,9 @@ fn execute_close_round(deps: DepsMut<NeutronQuery>, env: Env) -> Result<Response
                     compute_round_close(deps.as_ref(), env.block.time.seconds(), live_round)?;
                 ROUNDS.save(deps.storage, live_round.id.u128(), &finished_round)?;
                 resp = resp
-                    .add_attribute("action", "finished-round")
-                    .add_attribute("round_id", live_round.id.to_string())
-                    .add_attribute("close_price", finished_round.close_price.to_string())
+                    .add_attribute("velo_action", "finished-round")
+                    .add_attribute("velo_round_id", live_round.id.to_string())
+                    .add_attribute("velo_close_price", finished_round.close_price.to_string())
                     .add_attribute(
                         "winner",
                         match finished_round.winner {
@@ -627,24 +627,24 @@ fn execute_close_round(deps: DepsMut<NeutronQuery>, env: Env) -> Result<Response
             if LIVE_ROUND.may_load(deps.storage)?.is_none() && now >= open_round.open_time {
                 let live_round = compute_round_open(deps.as_ref(), env.clone(), open_round)?;
                 resp = resp
-                    .add_attribute("action", "bidding-close")
-                    .add_attribute("round_id", live_round.id.to_string())
-                    .add_attribute("open_price", live_round.open_price.to_string())
-                    .add_attribute("bear_amount", live_round.bear_amount.to_string())
-                    .add_attribute("bull_amount", live_round.bull_amount.to_string());
+                    .add_attribute("velo_action", "bidding_close")
+                    .add_attribute("velo_round_id", live_round.id.to_string())
+                    .add_attribute("velo_open_price", live_round.open_price.to_string())
+                    .add_attribute("velo_bear_amount", live_round.bear_amount.to_string())
+                    .add_attribute("velo_bull_amount", live_round.bull_amount.to_string());
                 LIVE_ROUND.save(deps.storage, &live_round)?;
                 NEXT_ROUND.remove(deps.storage);
                 let new_round_id = new_bid_round(deps.into_empty(), env)?;
                 resp = resp
-                    .add_attribute("action", "new-round")
-                    .add_attribute("round_id", new_round_id);
+                    .add_attribute("velo_action", "new_round")
+                    .add_attribute("velo_round_id", new_round_id);
             }
         }
         None => {
             let new_round_id = new_bid_round(deps.into_empty(), env)?;
             resp = resp
-                .add_attribute("action", "new-round")
-                .add_attribute("round_id", new_round_id);
+                .add_attribute("velo_action", "new_round")
+                .add_attribute("velo_round_id", new_round_id);
         }
     }
 
@@ -660,7 +660,7 @@ fn execute_update_config(
 
     CONFIG.save(deps.storage, &u_config)?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_attribute("velo_action", "update_config"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -1391,7 +1391,7 @@ fn execute_modify_dev_wallets(
     config.dev_wallet_list = new_wallets;
     CONFIG.save(deps.storage, &config)?;
 
-    Ok(Response::new().add_attribute("action", "new_dev_wallets"))
+    Ok(Response::new().add_attribute("velo_action", "new_dev_wallets"))
 }
 
 fn execute_add_ticker(
@@ -1403,7 +1403,7 @@ fn execute_add_ticker(
     assert_is_admin(deps.as_ref(), info)?;
     PRICE_TICKERS.save(deps.storage, denom, &ticker)?;
 
-    Ok(Response::new().add_attribute("action", "add_identifier"))
+    Ok(Response::new().add_attribute("velo_action", "add_identifier"))
 }
 
 fn execute_modify_bet_array(
@@ -1425,5 +1425,5 @@ fn execute_modify_bet_array(
 
     ROUND_DENOMS.save(deps.storage, &denoms)?;
 
-    Ok(Response::new().add_attribute("action", "modify_bet_array"))
+    Ok(Response::new().add_attribute("velo_action", "modify_bet_array"))
 }

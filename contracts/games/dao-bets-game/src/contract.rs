@@ -61,7 +61,7 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &msg.config)?;
     NEXT_BET_ID.save(deps.storage, &1)?;
 
-    Ok(Response::new().add_attribute("method", "instantiate_dao_bets"))
+    Ok(Response::new().add_attribute("velo_method", "instantiate_dao_bets"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -80,6 +80,7 @@ pub fn execute(
         ExecuteMsg::CreateBet {
             topic,
             description,
+            rules,
             img_url,
             end_bet_timestamp,
             expected_result_timestamp,
@@ -89,6 +90,7 @@ pub fn execute(
             info,
             topic,
             description,
+            rules,
             img_url,
             end_bet_timestamp,
             expected_result_timestamp,
@@ -231,11 +233,11 @@ fn bet_on(
 
     Ok(Response::new()
         .add_message(wasm_message)
-        .add_attribute("action", "bet".to_string())
-        .add_attribute("bet_id", bet_id.to_string())
-        .add_attribute("option", option)
-        .add_attribute("amount", funds_sent)
-        .add_attribute("account", info.sender.to_string()))
+        .add_attribute("velo_action", "bet".to_string())
+        .add_attribute("velo_bet_id", bet_id.to_string())
+        .add_attribute("velo_option", option)
+        .add_attribute("velo_amount", funds_sent)
+        .add_attribute("velo_account", info.sender.to_string()))
 }
 
 fn collect_winnings(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
@@ -336,9 +338,9 @@ fn collect_winnings(deps: DepsMut, info: MessageInfo) -> Result<Response, Contra
     Ok(resp
         .add_messages(messages_fees)
         .add_message(msg_send_winnings)
-        .add_attribute("action", "collect-winnings")
-        .add_attribute("claimer", info.sender)
-        .add_attribute("amount", amount_winnings.to_string()))
+        .add_attribute("velo_action", "collect-winnings")
+        .add_attribute("velo_claimer", info.sender)
+        .add_attribute("velo_amount", amount_winnings.to_string()))
 }
 
 fn collect_winnings_bet(
@@ -427,9 +429,9 @@ fn collect_winnings_bet(
     Ok(resp
         .add_messages(messages_fees)
         .add_message(msg_send_winnings)
-        .add_attribute("action", "collect-winnings")
-        .add_attribute("claimer", info.sender)
-        .add_attribute("amount", amount_winnings.to_string()))
+        .add_attribute("velo_action", "collect-winnings")
+        .add_attribute("velo_claimer", info.sender)
+        .add_attribute("velo_amount", amount_winnings.to_string()))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -438,6 +440,7 @@ fn create_bet(
     info: MessageInfo,
     topic: String,
     description: String,
+    rules: Option<String>,
     img_url: Option<String>,
     end_bet_timestamp: u64,
     expected_result_timestamp: Option<u64>,
@@ -452,6 +455,7 @@ fn create_bet(
         bet_id,
         topic,
         description,
+        rules,
         img_url,
         end_bet_timestamp,
         expected_result_timestamp,
@@ -468,8 +472,8 @@ fn create_bet(
     UNFINISHED_BETS.save(deps.storage, bet_id, &bet)?;
 
     Ok(Response::new()
-        .add_attribute("action", "create-bet")
-        .add_attribute("bet_id", bet_id.to_string()))
+        .add_attribute("velo_action", "create-bet")
+        .add_attribute("velo_bet_id", bet_id.to_string()))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -512,8 +516,8 @@ fn modify_bet(
     UNFINISHED_BETS.save(deps.storage, bet_id.u128(), &bet)?;
 
     Ok(Response::new()
-        .add_attribute("action", "modify-bet")
-        .add_attribute("bet_id", bet_id))
+        .add_attribute("velo_action", "modify-bet")
+        .add_attribute("velo_bet_id", bet_id))
 }
 
 fn complete_bet(
@@ -534,9 +538,9 @@ fn complete_bet(
     UNFINISHED_BETS.remove(deps.storage, bet_id.u128())?;
 
     Ok(Response::new()
-        .add_attribute("action", "complete-bet")
-        .add_attribute("bet_id", bet_id.to_string())
-        .add_attribute("result_option", result_option))
+        .add_attribute("velo_action", "complete-bet")
+        .add_attribute("velo_bet_id", bet_id.to_string())
+        .add_attribute("velo_result_option", result_option))
 }
 
 fn cancel_bet(
@@ -556,8 +560,8 @@ fn cancel_bet(
     UNFINISHED_BETS.remove(deps.storage, bet_id.u128())?;
 
     Ok(Response::new()
-        .add_attribute("action", "cancel-bet")
-        .add_attribute("bet_id", bet_id.to_string()))
+        .add_attribute("velo_action", "cancel-bet")
+        .add_attribute("velo_bet_id", bet_id.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

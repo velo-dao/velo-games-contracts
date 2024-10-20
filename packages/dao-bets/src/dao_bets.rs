@@ -48,6 +48,7 @@ pub struct Bet {
     pub bet_id: u128,
     pub topic: String,
     pub description: String,
+    pub rules: Option<String>,
     pub img_url: Option<String>,
     pub end_bet_timestamp: u64,
     pub expected_result_timestamp: Option<u64>,

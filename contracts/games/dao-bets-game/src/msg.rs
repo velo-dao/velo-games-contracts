@@ -30,6 +30,7 @@ pub enum ExecuteMsg {
     CreateBet {
         topic: String,
         description: String,
+        rules: Option<String>,
         img_url: Option<String>,
         end_bet_timestamp: u64,
         expected_result_timestamp: Option<u64>,
