@@ -94,9 +94,18 @@ pub enum QueryMsg {
     #[returns(Uint128)]
     MyPendingReward { player: Addr },
     #[returns(PendingRewardRoundsResponse)]
-    MyPendingRewardRounds { player: Addr },
+    MyPendingRewardRounds {
+        player: Addr,
+        start_after: Option<Uint128>,
+        limit: Option<u32>,
+    },
     #[returns(PendingRewardRoundsResponse)]
-    MyPendingRewardRoundsByTopic { player: Addr, topic: String },
+    MyPendingRewardRoundsByTopic {
+        player: Addr,
+        topic: String,
+        start_after: Option<Uint128>,
+        limit: Option<u32>,
+    },
     #[returns(Uint128)]
     MyPendingRewardRound { round_id: Uint128, player: Addr },
     #[returns(Vec<BetInfo>)]

@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-bets-game",
-  "contract_version": "0.1.4",
+  "contract_version": "0.1.5",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -828,8 +828,26 @@
               "player"
             ],
             "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
               "player": {
                 "$ref": "#/definitions/Addr"
+              },
+              "start_after": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Uint128"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
             "additionalProperties": false
@@ -850,8 +868,26 @@
               "topic"
             ],
             "properties": {
+              "limit": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
               "player": {
                 "$ref": "#/definitions/Addr"
+              },
+              "start_after": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Uint128"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "topic": {
                 "type": "string"

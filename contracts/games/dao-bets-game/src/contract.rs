@@ -582,12 +582,28 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::MyPendingReward { player } => {
             to_json_binary(&query_my_pending_reward(deps, player)?)
         }
-        QueryMsg::MyPendingRewardRounds { player } => {
-            to_json_binary(&query_my_pending_reward_rounds(deps, player)?)
-        }
-        QueryMsg::MyPendingRewardRoundsByTopic { player, topic } => to_json_binary(
-            &query_my_pending_reward_rounds_by_topic(deps, player, topic)?,
-        ),
+        QueryMsg::MyPendingRewardRounds {
+            player,
+            start_after,
+            limit,
+        } => to_json_binary(&query_my_pending_reward_rounds(
+            deps,
+            player,
+            start_after,
+            limit,
+        )?),
+        QueryMsg::MyPendingRewardRoundsByTopic {
+            player,
+            topic,
+            start_after,
+            limit,
+        } => to_json_binary(&query_my_pending_reward_rounds_by_topic(
+            deps,
+            player,
+            topic,
+            start_after,
+            limit,
+        )?),
         QueryMsg::MyPendingRewardRound { round_id, player } => {
             to_json_binary(&query_my_pending_reward_round(deps, round_id, player)?)
         }
@@ -782,8 +798,10 @@ fn query_my_pending_reward(deps: Deps, player: Addr) -> StdResult<Uint128> {
 fn query_my_pending_reward_rounds(
     deps: Deps,
     player: Addr,
+    start_after: Option<Uint128>,
+    limit: Option<u32>,
 ) -> StdResult<PendingRewardRoundsResponse> {
-    let my_bets_list = query_my_games_without_limit(deps, player)?;
+    let my_bets_list = query_my_games_with_limit(deps, player, start_after, limit)?;
 
     let mut pending_reward_rounds = Vec::new();
     let mut pending_reward_total = Uint128::zero();
@@ -825,8 +843,10 @@ fn query_my_pending_reward_rounds_by_topic(
     deps: Deps,
     player: Addr,
     topic: String,
+    start_after: Option<Uint128>,
+    limit: Option<u32>,
 ) -> StdResult<PendingRewardRoundsResponse> {
-    let my_bets_list = query_my_games_without_limit(deps, player)?;
+    let my_bets_list = query_my_games_with_limit(deps, player, start_after, limit)?;
 
     let mut pending_reward_rounds = Vec::new();
     let mut pending_reward_total = Uint128::zero();
@@ -909,6 +929,27 @@ fn query_my_games_without_limit(deps: Deps, player: Addr) -> StdResult<MyBetsRes
         .range(deps.storage, None, None, Order::Ascending)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
+    Ok(MyBetsResponse { my_bets_list })
+}
+
+fn query_my_games_with_limit(
+    deps: Deps,
+    player: Addr,
+    start_after: Option<Uint128>,
+    limit: Option<u32>,
+) -> StdResult<MyBetsResponse> {
+    let limit = limit.unwrap_or(MAX_PAGE_LIMIT).min(MAX_PAGE_LIMIT);
+    let start = start_after.map(|bet_id| Bound::exclusive((bet_id.u128(), player.clone())));
+
+    let my_bets_list = bet_info_storage()
+        .idx
+        .player
+        .prefix(player.clone())
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit as usize)
+        .map(|res| res.map(|item| item.1))
+        .collect::<StdResult<Vec<_>>>()?;
+
     Ok(MyBetsResponse { my_bets_list })
 }
 
