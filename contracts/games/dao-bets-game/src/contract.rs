@@ -201,7 +201,8 @@ fn bet_on(
         .current_bet_amounts
         .get_mut(&option)
         .ok_or(ContractError::InvalidOption {})?;
-    bet_total_amount.checked_add(funds_sent)?;
+
+    *bet_total_amount = bet_total_amount.checked_add(funds_sent)?;
 
     UNFINISHED_BETS.save(deps.storage, bet_id.u128(), &bet)?;
 
