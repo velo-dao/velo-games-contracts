@@ -64,7 +64,8 @@ pub fn instantiate(
 
     let canonical_creator = deps.api.addr_canonicalize(env.contract.address.as_str())?;
     let code_info_response = deps.querier.query_wasm_code_info(msg.users_code_id)?;
-    let salt = info.sender.as_bytes();
+    let salt_str = env.block.height.to_string();
+    let salt = salt_str.as_bytes();
     let canonical_address = instantiate2_address(
         code_info_response.checksum.as_slice(),
         &canonical_creator,
