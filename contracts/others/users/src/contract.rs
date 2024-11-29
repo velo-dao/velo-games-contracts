@@ -168,7 +168,11 @@ fn modify_user(
     if let Some(current) = current_user {
         user.elo = current.elo;
         user.experience = current.experience;
-        user.creation_date = current.creation_date;
+        user.creation_date = if let Some(creation_date) = current.creation_date {
+            Some(creation_date)
+        } else {
+            Some(env.block.time)
+        };
         user.is_verified = current.is_verified
     } else {
         user.creation_date = Some(env.block.time);
@@ -279,7 +283,7 @@ fn add_experience_and_elo(
             socials: None,
             experience: Some(experience),
             elo: elo.as_ref().map(|e| if e.add { e.amount } else { 0 }),
-            creation_date: None,
+            creation_date: Some(env.block.time),
             is_verified: None,
         };
         NUM_USERS.update(deps.storage, |n| -> Result<_, ContractError> { Ok(n + 1) })?;
