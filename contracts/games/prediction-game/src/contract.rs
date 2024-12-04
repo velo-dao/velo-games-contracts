@@ -34,9 +34,8 @@ use prediction::prediction_game::{MyCurrentPositionResponse, StatusResponse};
 
 const FEE_PRECISION: u128 = 100;
 
-// Query limits
-const DEFAULT_QUERY_LIMIT: u32 = 10;
-const MAX_QUERY_LIMIT: u32 = 30;
+// Pagination info for queries
+const MAX_PAGE_LIMIT: u32 = 250;
 
 const CONTRACT_NAME: &str = env!("CARGO_PKG_NAME");
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -794,7 +793,7 @@ pub fn query_my_games(
     start_after: Option<Uint128>,
     limit: Option<u32>,
 ) -> StdResult<MyGameResponse> {
-    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+    let limit = limit.unwrap_or(MAX_PAGE_LIMIT).min(MAX_PAGE_LIMIT) as usize;
 
     let start = if let Some(start) = start_after {
         let round_id = start;
@@ -821,7 +820,7 @@ pub fn query_users_per_round(
     start_after: Option<Addr>,
     limit: Option<u32>,
 ) -> StdResult<RoundUsersResponse> {
-    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+    let limit = limit.unwrap_or(MAX_PAGE_LIMIT).min(MAX_PAGE_LIMIT) as usize;
 
     let start = if let Some(start) = start_after {
         let player = start;
@@ -848,7 +847,7 @@ pub fn query_claim_info_per_round(
     start_after: Option<Addr>,
     limit: Option<u32>,
 ) -> StdResult<ClaimInfoResponse> {
-    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+    let limit = limit.unwrap_or(MAX_PAGE_LIMIT).min(MAX_PAGE_LIMIT) as usize;
 
     let start = if let Some(start) = start_after {
         let player = start;
@@ -875,7 +874,7 @@ pub fn query_claim_info_by_user(
     start_after: Option<Uint128>,
     limit: Option<u32>,
 ) -> StdResult<ClaimInfoResponse> {
-    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+    let limit = limit.unwrap_or(MAX_PAGE_LIMIT).min(MAX_PAGE_LIMIT) as usize;
 
     let start = if let Some(start) = start_after {
         let round_id = start;
